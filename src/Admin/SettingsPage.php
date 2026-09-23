@@ -23,14 +23,24 @@ final class SettingsPage {
 	/** Hook. */
 	public function hook(): void {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
+		add_action( 'admin_menu', array( $this, 'oneLevelsMenu' ), 99 );
 		add_action( 'admin_init', array( $this, 'register' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( FAVR_MEMBERS_FILE ), array( $this, 'actionLinks' ) );
 	}
 
 	/** Menu. */
 	public function menu(): void {
-		add_submenu_page( 'edit.php?post_type=' . ID::POST_TYPE, __( 'Membership Levels', 'favr-members' ), __( 'Levels', 'favr-members' ), ID::CAP_SETTINGS, 'edit-tags.php?taxonomy=' . ID::TAX_LEVEL . '&post_type=' . ID::POST_TYPE );
+		// "Membership Levels" is added automatically by WordPress for the shared level taxonomy.
 		add_submenu_page( 'edit.php?post_type=' . ID::POST_TYPE, __( 'Member Settings', 'favr-members' ), __( 'Settings', 'favr-members' ), ID::CAP_SETTINGS, self::SLUG, array( $this, 'render' ) );
+	}
+
+	/**
+	 * Levels are one shared list. With Favr Directory active WordPress would also list them under
+	 * Directory; keep a single entry, here, where membership is managed.
+	 */
+	public function oneLevelsMenu(): void {
+		remove_submenu_page( 'edit.php?post_type=' . ID::DIRECTORY_POST_TYPE, 'edit-tags.php?taxonomy=' . ID::TAX_LEVEL . '&amp;post_type=' . ID::DIRECTORY_POST_TYPE );
+		remove_submenu_page( 'edit.php?post_type=' . ID::DIRECTORY_POST_TYPE, 'edit-tags.php?taxonomy=' . ID::TAX_LEVEL . '&post_type=' . ID::DIRECTORY_POST_TYPE );
 	}
 
 	/**
