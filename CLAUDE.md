@@ -36,5 +36,9 @@ Local test site: `http://sermonator-test.local/`, with this repo symlinked to
 - **The front end** is PRG form handlers (`Frontend\Auth`), shortcodes (`Frontend\Pages`), the
   dashboard tab API (`Frontend\Dashboard`), access control (`Frontend\Access`) and content gating
   (`Frontend\Restrict`). Templates are in `templates/`.
+- **Page builders** (ADR 0002 in Favr Directory): one renderer per feature; the shortcode, block
+  and Elementor widget (`Integration\Elementor\*`, base class in favr/core) are thin adapters.
+  Never reference Elementor classes outside callbacks of Elementor's own hooks.
+  Elementor visibility (`Integration\Elementor`) marks gated elements dynamic so the element cache never serves them.
 - **Shared code:** import from `FavrMembers\Vendor\FavrCore\…`. Never edit `vendor-prefixed/`; change
   favr/core instead and re-run `composer update favr/core`.
