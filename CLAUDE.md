@@ -15,9 +15,8 @@ composer lint      # WPCS, keep at 0 errors
 ```
 
 Local test site: `http://sermonator-test.local/`, with this repo symlinked to
-`wp-content/plugins/favr-members`. `wp favr-members seed` loads sample members. The site's UTMwp
-plugin fatals on `user_register` when there is no UTM session, so run WP-CLI with
-`--skip-plugins=utmwp` when creating users.
+`wp-content/plugins/favr-members`. `wp favr-members seed` loads sample members. (The site's UTMwp plugin, which fataled on
+`user_register`, has been disabled.)
 
 ## Architecture
 
@@ -29,7 +28,11 @@ plugin fatals on `user_register` when there is no UTM session, so run WP-CLI wit
   does this person hold or represent".
 - **Every change fires `favr_members_member_saved`** (admin save, import, auto-lapse, application).
   `Integration\Directory` listens and creates, adopts and syncs the business listing. It never
-  creates listings for non-active members.
+  creates listings for non-active members, and never adopts by name for applications
+  (`Directory::mayAdopt()`).
+- **Directory editing** (`Integration\DirectoryEditing`) grants listing edit rights to representatives
+  of active business members and routes claims/invites onto the member record, all through Favr
+  Directory filters. `Admin\ApplicationsQueue` adds applications to the shared Approvals inbox.
 - **The front end** is PRG form handlers (`Frontend\Auth`), shortcodes (`Frontend\Pages`), the
   dashboard tab API (`Frontend\Dashboard`), access control (`Frontend\Access`) and content gating
   (`Frontend\Restrict`). Templates are in `templates/`.

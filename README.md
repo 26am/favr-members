@@ -54,11 +54,24 @@ The edit screen only shows the fields for the chosen type, so individual members
 
 ## With Favr Directory
 
-- Saving an **active** business member creates its listing, or links an existing listing with
-  exactly the same name. Pending applications never reach the public directory.
+- Saving an **active** business member creates its listing. For records staff create or import, an
+  existing unlinked listing with exactly the same name is linked instead; applications are never
+  linked automatically (staff choose "Use an existing listing" on the member screen). Pending
+  applications never reach the public directory.
+- **Representatives of an active business member edit its listing** from the dashboard's
+  **My Listing** tab (Directory's field policy decides what goes live and what staff approve).
+  Approved listing claims and staff invites from the listing screen add the person to the member
+  record.
 - Level, member since, renewal date and member ID are copied onto the listing, which shows them
   read-only with an "Edit member →" link.
 - Optionally, lapsed or inactive businesses' listings are hidden and restored when they renew.
+
+## Approvals
+
+With Favr Directory or Favr Events active, staff get one **Approvals** screen. Members adds
+**Membership applications**: approving activates the membership (and member-since date), emails
+the applicant and, for businesses, creates the listing. Declining marks the application inactive
+and emails the note.
 
 ## For developers
 
