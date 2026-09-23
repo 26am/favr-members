@@ -11,6 +11,7 @@ return array(
     'FavrMembers\\Vendor\\FavrCore\\Approvals\\Inbox' => $vendorDir . '/favr/core/src/Approvals/Inbox.php',
     'FavrMembers\\Vendor\\FavrCore\\Fields\\FieldSet' => $vendorDir . '/favr/core/src/Fields/FieldSet.php',
     'FavrMembers\\Vendor\\FavrCore\\Fields\\Sanitizer' => $vendorDir . '/favr/core/src/Fields/Sanitizer.php',
+    'FavrMembers\\Vendor\\FavrCore\\Integrations\\Elementor\\Widget' => $vendorDir . '/favr/core/src/Integrations/Elementor/Widget.php',
     'FavrMembers\\Vendor\\FavrCore\\Moderation\\PendingChanges' => $vendorDir . '/favr/core/src/Moderation/PendingChanges.php',
     'FavrMembers\\Vendor\\FavrCore\\Moderation\\Uploads' => $vendorDir . '/favr/core/src/Moderation/Uploads.php',
     'FavrMembers\\Vendor\\FavrCore\\Support\\AssetVersion' => $vendorDir . '/favr/core/src/Support/AssetVersion.php',

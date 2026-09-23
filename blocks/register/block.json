@@ -1,0 +1,16 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "favr-members/register",
+	"title": "Membership Application",
+	"category": "widgets",
+	"icon": "welcome-add-page",
+	"description": "The Become a Member application form (when applications are open in Members → Settings).",
+	"keywords": [ "members", "membership", "account", "favr" ],
+	"textdomain": "favr-members",
+	"supports": {
+		"html": false,
+		"multiple": false,
+		"align": [ "wide" ]
+	}
+}

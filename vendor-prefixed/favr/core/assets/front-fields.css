@@ -2,7 +2,7 @@
    Inherits the theme's font and text colour so forms sit naturally inside any theme. */
 
 .favr-front {
-	--favr-admin-accent: var(--wp--preset--color--primary, var(--favr-accent, #2271b1));
+	--favr-admin-accent: var(--favr-brand, var(--wp--preset--color--primary, var(--favr-accent, #2271b1)));
 	--favr-admin-border: color-mix(in srgb, currentColor 18%, transparent);
 	--favr-admin-muted: color-mix(in srgb, currentColor 65%, transparent);
 	--favr-admin-bg: color-mix(in srgb, currentColor 4%, transparent);

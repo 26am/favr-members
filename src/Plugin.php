@@ -42,6 +42,7 @@ final class Plugin {
 		( new Model\Lapse() )->hook();
 		( new Integration\Directory() )->hook();
 		( new Integration\DirectoryEditing() )->hook();
+		( new Integration\Elementor() )->hook();
 
 		( new Frontend\Auth() )->hook();
 		( new Frontend\Pages() )->hook();

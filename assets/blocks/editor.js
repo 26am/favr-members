@@ -46,6 +46,21 @@
 		}
 	} );
 
+	// Login, account and application: server-rendered on the site; a clear placeholder here.
+	[
+		[ 'favr-members/login', 'unlock', __( 'Member Login', 'favr-members' ), __( 'Visitors log in here (with forgot-password and set-new-password steps).', 'favr-members' ) ],
+		[ 'favr-members/account', 'id-alt', __( 'Member Account', 'favr-members' ), __( 'Members see their dashboard here: overview, profile, My Listing and My Events. Visitors see the login form.', 'favr-members' ) ],
+		[ 'favr-members/register', 'welcome-add-page', __( 'Membership Application', 'favr-members' ), __( 'The application form, when applications are open in Members → Settings.', 'favr-members' ) ]
+	].forEach( function ( def ) {
+		wp.blocks.registerBlockType( def[ 0 ], {
+			edit: function () {
+				return el( 'div', be.useBlockProps(), el( C.Placeholder, { icon: def[ 1 ], label: def[ 2 ], instructions: def[ 3 ] } ) );
+			},
+			save: function () {
+				return null;
+			}
+		} );
+
 	// "Members only" toggle in the page/post sidebar.
 	var PluginPanel = ( wp.editor && wp.editor.PluginDocumentSettingPanel ) || ( wp.editPost && wp.editPost.PluginDocumentSettingPanel );
 	if ( ! PluginPanel || ! wp.plugins ) {
@@ -77,4 +92,6 @@
 	}
 
 	wp.plugins.registerPlugin( 'favr-members-gate', { render: GatePanel } );
+
+	} );
 } )( window.wp );

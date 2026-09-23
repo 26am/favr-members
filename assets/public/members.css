@@ -4,7 +4,7 @@
  */
 
 .favr-m {
-	--favr-m-accent: var(--wp--preset--color--primary, #1f5fbf);
+	--favr-m-accent: var(--favr-brand, var(--wp--preset--color--primary, #1f5fbf));
 	--favr-m-accent-contrast: #fff;
 	--favr-m-border: color-mix(in srgb, currentColor 16%, transparent);
 	--favr-m-soft: color-mix(in srgb, currentColor 4%, transparent);

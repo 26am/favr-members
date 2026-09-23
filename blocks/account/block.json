@@ -1,0 +1,16 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "favr-members/account",
+	"title": "Member Account",
+	"category": "widgets",
+	"icon": " overview, profile and tabs from other Favr plugins (My Listing, My Events). Visitors see the login form.:id-alt",
+	"description": "The member dashboard",
+	"keywords": [ "members", "membership", "account", "favr" ],
+	"textdomain": "favr-members",
+	"supports": {
+		"html": false,
+		"multiple": false,
+		"align": [ "wide" ]
+	}
+}

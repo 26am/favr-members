@@ -40,6 +40,16 @@ final class Restrict {
 			FAVR_MEMBERS_PATH . 'blocks/members-only',
 			array( 'render_callback' => array( $this, 'renderBlock' ) )
 		);
+		// Login, account and application blocks: the same renderers as the shortcodes.
+		$pages = new Pages();
+		foreach ( array( 'login', 'account', 'register' ) as $slug ) {
+			register_block_type(
+				FAVR_MEMBERS_PATH . 'blocks/' . $slug,
+				array(
+					'render_callback' => static fn(): string => sprintf( '<div %s>%s</div>', get_block_wrapper_attributes(), $pages->{$slug}() ),
+				)
+			);
+		}
 		foreach ( array( 'page', 'post' ) as $type ) {
 			register_post_meta(
 				$type,

@@ -1,0 +1,16 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "favr-members/login",
+	"title": "Member Login",
+	"category": "widgets",
+	"icon": "unlock",
+	"description": "Login form with forgot-password and set-new-password steps. Logged-in members see a short welcome instead.",
+	"keywords": [ "members", "membership", "account", "favr" ],
+	"textdomain": "favr-members",
+	"supports": {
+		"html": false,
+		"multiple": false,
+		"align": [ "wide" ]
+	}
+}

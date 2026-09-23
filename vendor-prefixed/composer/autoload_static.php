@@ -26,6 +26,7 @@ class ComposerStaticInit3ffd5bdd9a33a4b482629fbf95970454
         'FavrMembers\\Vendor\\FavrCore\\Approvals\\Inbox' => __DIR__ . '/..' . '/favr/core/src/Approvals/Inbox.php',
         'FavrMembers\\Vendor\\FavrCore\\Fields\\FieldSet' => __DIR__ . '/..' . '/favr/core/src/Fields/FieldSet.php',
         'FavrMembers\\Vendor\\FavrCore\\Fields\\Sanitizer' => __DIR__ . '/..' . '/favr/core/src/Fields/Sanitizer.php',
+        'FavrMembers\\Vendor\\FavrCore\\Integrations\\Elementor\\Widget' => __DIR__ . '/..' . '/favr/core/src/Integrations/Elementor/Widget.php',
         'FavrMembers\\Vendor\\FavrCore\\Moderation\\PendingChanges' => __DIR__ . '/..' . '/favr/core/src/Moderation/PendingChanges.php',
         'FavrMembers\\Vendor\\FavrCore\\Moderation\\Uploads' => __DIR__ . '/..' . '/favr/core/src/Moderation/Uploads.php',
         'FavrMembers\\Vendor\\FavrCore\\Support\\AssetVersion' => __DIR__ . '/..' . '/favr/core/src/Support/AssetVersion.php',

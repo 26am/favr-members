@@ -25,6 +25,9 @@ Favr Events).
   callable for the menu badge.
 - `FieldRenderer::panel()`: the shared tabbed panel (tabs + panes) used by every edit screen and
   front-end form.
+- `FavrCore\Integrations\Elementor\Widget`: base for Elementor widgets (declarative settings, an
+  accent-color style control writing `--favr-brand`, the shared "Favr" panel category). Only
+  referenced from `elementor/widgets/register`, so Elementor stays optional.
 - `FavrCore\Support\RateLimit::hit( $key, $max, $window )`: simple per-key limits for member forms.
 
 ## How plugins consume it
