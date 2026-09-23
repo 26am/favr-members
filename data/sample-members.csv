@@ -1,0 +1,9 @@
+type,first_name,last_name,business_name,organization,job_title,email,phone,status,level,member_since,renewal_date,member_number,logins
+individual,Hannah,Brooks,,Springfield Public Schools,Principal,hannah.brooks@example.com,(555) 020-1001,active,Member,2019-02-01,2027-02-01,I-1001,hannah.brooks@example.com
+individual,Luis,Ortega,,,Realtor,luis.ortega@example.com,(555) 020-1002,active,Silver,2021-06-15,2027-06-15,I-1002,luis.ortega@example.com
+individual,Grace,Kim,,Kim Consulting,Principal Consultant,grace.kim@example.com,(555) 020-1003,pending,,,,,
+individual,Tom,Walsh,,,Retired,tom.walsh@example.com,(555) 020-1004,lapsed,Member,2015-01-10,2025-01-10,I-1004,
+business,,,Main Street Bakery,,,hello@mainstreetbakery.example.com,(555) 010-1100,active,Platinum,2009-03-01,2027-03-01,B-2001,maria.rossi@example.com
+business,,,Summit Insurance Group,,,quotes@summitins.example.com,(555) 010-3300,active,Gold,2011-01-10,2027-01-10,B-2002,jennifer.walsh@example.com
+business,,,Riverbend Brewing Co.,,,cheers@riverbendbrew.example.com,(555) 010-4400,active,Silver,2018-05-20,2026-11-20,B-2003,
+business,,,Harbor Light Coffee,,,hi@harborlight.example.com,(555) 020-3004,active,Member,2026-09-01,2027-09-01,B-2004,

@@ -1,0 +1,122 @@
+/* Favr Members — admin (field UI comes from favr/core: assets/core/fields.css). */
+
+.favr-member-heading {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 16px 0 0 !important;
+	padding: 0 !important;
+	font-size: 20px !important;
+}
+
+.favr-type-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: #f0f6fc;
+	color: #135e96;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.favr-type-badge--business {
+	background: #fcf0e3;
+	color: #8a4a00;
+}
+
+.favr-type-badge .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.favr-status {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.favr-status--active {
+	background: #e7f5ea;
+	color: #00712e;
+}
+
+.favr-status--pending {
+	background: #fcf9e8;
+	color: #8a6d00;
+}
+
+.favr-status--lapsed {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.favr-overdue {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.favr-muted {
+	color: #8c8f94;
+}
+
+/* Type-dependent boxes. */
+body.favr-type-individual .favr-only-business,
+body.favr-type-business .favr-only-individual {
+	display: none;
+}
+
+.favr-logins__list {
+	margin: 0 0 12px;
+}
+
+.favr-logins__list li {
+	padding: 8px 0;
+	border-bottom: 1px solid #f0f0f1;
+	line-height: 1.5;
+}
+
+.favr-logins__remove {
+	color: #b32d2e;
+}
+
+.favr-logins__names {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+	margin-top: 6px;
+}
+
+.favr-logins__names input {
+	width: 100%;
+}
+
+.favr-levels {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.favr-level__swatch {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	border-radius: 3px;
+	vertical-align: middle;
+}
+
+.post-type-favr_member .column-favr_type {
+	width: 130px;
+}
+
+.post-type-favr_member .column-favr_status,
+.post-type-favr_member .column-favr_level {
+	width: 90px;
+}

@@ -1,0 +1,15 @@
+.favr-members-only-editor {
+	position: relative;
+	padding: 2.25rem 1rem 1rem;
+	border: 2px dashed color-mix(in srgb, currentColor 25%, transparent);
+	border-radius: 10px;
+}
+
+.favr-members-only-editor__label {
+	position: absolute;
+	top: .5rem;
+	left: .75rem;
+	font-size: 12px;
+	font-weight: 600;
+	opacity: .7;
+}

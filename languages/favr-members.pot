@@ -1,0 +1,1163 @@
+# Copyright (C) 2026 Favr Sites
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Favr Members 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/favr-members\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-09-23T13:28:55+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: favr-members\n"
+
+#. Plugin Name of the plugin
+#: favr-members.php
+msgid "Favr Members"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: favr-members.php
+msgid "https://github.com/26am/favr-members"
+msgstr ""
+
+#. Description of the plugin
+#: favr-members.php
+msgid "Member records (individual or business), member logins and a member dashboard for Chambers of Commerce and associations. Part of Favr Sites."
+msgstr ""
+
+#. Author of the plugin
+#: favr-members.php
+msgid "Favr Sites"
+msgstr ""
+
+#. translators: %d: characters left.
+#: src/Admin/Assets.php:42
+#, php-format
+msgid "%d characters left"
+msgstr ""
+
+#: src/Admin/EditScreen.php:70
+msgid "Membership level"
+msgstr ""
+
+#: src/Admin/EditScreen.php:71
+msgid "Login access"
+msgstr ""
+
+#: src/Admin/EditScreen.php:73
+#: src/Admin/ListScreen.php:72
+msgid "Directory listing"
+msgstr ""
+
+#: src/Admin/EditScreen.php:94
+#: src/Admin/ListScreen.php:69
+#: src/Model/Fields.php:50
+msgid "Business"
+msgstr ""
+
+#: src/Admin/EditScreen.php:94
+#: src/Admin/ListScreen.php:69
+#: src/Model/Fields.php:49
+msgid "Individual"
+msgstr ""
+
+#: src/Admin/EditScreen.php:102
+msgid "Member sections"
+msgstr ""
+
+#: src/Admin/EditScreen.php:169
+#: src/Admin/ListScreen.php:103
+msgid "None"
+msgstr ""
+
+#: src/Admin/EditScreen.php:182
+msgid "Manage levels"
+msgstr ""
+
+#: src/Admin/EditScreen.php:196
+msgid "The member’s own login to the member dashboard."
+msgstr ""
+
+#: src/Admin/EditScreen.php:197
+msgid "People who can log in and manage this business (owner, office manager…)."
+msgstr ""
+
+#. translators: %s: human time diff.
+#: src/Admin/EditScreen.php:206
+#, php-format
+msgid "Last login %s ago"
+msgstr ""
+
+#: src/Admin/EditScreen.php:207
+msgid "Invited, hasn’t logged in yet"
+msgstr ""
+
+#: src/Admin/EditScreen.php:207
+msgid "Never logged in"
+msgstr ""
+
+#: src/Admin/EditScreen.php:215
+msgid "Send login email"
+msgstr ""
+
+#: src/Admin/EditScreen.php:216
+msgid "Remove access"
+msgstr ""
+
+#: src/Admin/EditScreen.php:221
+msgid "No login yet."
+msgstr ""
+
+#: src/Admin/EditScreen.php:228
+msgid "Create a login using the email above"
+msgstr ""
+
+#: src/Admin/EditScreen.php:235
+msgid "Add a person"
+msgstr ""
+
+#: src/Admin/EditScreen.php:236
+msgid "Email address"
+msgstr ""
+
+#: src/Admin/EditScreen.php:237
+#: src/Model/Fields.php:55
+#: templates/register.php:41
+#: templates/tabs/profile.php:20
+msgid "First name"
+msgstr ""
+
+#: src/Admin/EditScreen.php:238
+#: src/Model/Fields.php:62
+#: templates/register.php:45
+#: templates/tabs/profile.php:24
+msgid "Last name"
+msgstr ""
+
+#: src/Admin/EditScreen.php:242
+msgid "Email new logins an invite to set their password"
+msgstr ""
+
+#: src/Admin/EditScreen.php:261
+msgid "Published"
+msgstr ""
+
+#: src/Admin/EditScreen.php:261
+msgid "Draft"
+msgstr ""
+
+#: src/Admin/EditScreen.php:263
+msgid "Edit listing"
+msgstr ""
+
+#: src/Admin/EditScreen.php:265
+#: src/Admin/SettingsPage.php:108
+msgid "View"
+msgstr ""
+
+#: src/Admin/EditScreen.php:266
+msgid "Level, member since, renewal date and member ID are kept in sync from this record."
+msgstr ""
+
+#: src/Admin/EditScreen.php:269
+msgid "A directory listing will be created for this business when you save."
+msgstr ""
+
+#: src/Admin/EditScreen.php:271
+msgid "Individual members don’t have a directory listing."
+msgstr ""
+
+#: src/Admin/EditScreen.php:294
+msgid "(no name)"
+msgstr ""
+
+#: src/Admin/EditScreen.php:349
+msgid "Login created and invite emailed."
+msgstr ""
+
+#: src/Admin/EditScreen.php:350
+msgid "Login created."
+msgstr ""
+
+#: src/Admin/EditScreen.php:363
+msgid "Person added and invite emailed."
+msgstr ""
+
+#: src/Admin/EditScreen.php:364
+msgid "Person added."
+msgstr ""
+
+#: src/Admin/EditScreen.php:372
+msgid "Login email sent."
+msgstr ""
+
+#: src/Admin/EditScreen.php:373
+msgid "The login email could not be sent."
+msgstr ""
+
+#: src/Admin/EditScreen.php:382
+msgid "Approved — the applicant has been emailed."
+msgstr ""
+
+#: src/Admin/EditScreen.php:435
+#: src/Admin/EditScreen.php:436
+#: src/Model/Registrar.php:45
+msgid "Member updated."
+msgstr ""
+
+#: src/Admin/EditScreen.php:437
+msgid "Member added."
+msgstr ""
+
+#: src/Admin/EditScreen.php:438
+msgid "Member saved."
+msgstr ""
+
+#: src/Admin/EditScreen.php:439
+msgid "Member draft updated."
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:31
+#: src/Admin/ImportExportPage.php:76
+msgid "Import & Export Members"
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:31
+msgid "Import / Export"
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:38
+msgid "You are not allowed to export members."
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:56
+msgid "You are not allowed to import members."
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:59
+msgid "Please choose a CSV file to upload."
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:80
+msgid "Test run — nothing was saved."
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:80
+msgid "Import complete."
+msgstr ""
+
+#. translators: 1: created, 2: updated, 3: skipped.
+#: src/Admin/ImportExportPage.php:83
+#, php-format
+msgid "Created %1$d, updated %2$d, skipped %3$d."
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:94
+msgid "Import members from a spreadsheet"
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:95
+msgid "Columns: type (individual or business), first_name, last_name, business_name, email, phone, status, level, member_since, renewal_date, member_number, logins (emails separated by |). Export first to get a template."
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:100
+msgid "Test run first (save nothing)"
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:101
+msgid "Email new logins an invite"
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:102
+msgid "Import CSV"
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:107
+msgid "Export members"
+msgstr ""
+
+#: src/Admin/ImportExportPage.php:111
+msgid "Download CSV"
+msgstr ""
+
+#: src/Admin/LevelScreen.php:40
+#: src/Admin/LevelScreen.php:51
+msgid "Display order"
+msgstr ""
+
+#: src/Admin/LevelScreen.php:40
+msgid "Lower numbers are higher tiers."
+msgstr ""
+
+#: src/Admin/LevelScreen.php:41
+#: src/Admin/LevelScreen.php:52
+msgid "Badge color"
+msgstr ""
+
+#: src/Admin/ListScreen.php:42
+#: src/Model/Activation.php:72
+#: src/Model/Activation.php:142
+#: src/Model/Registrar.php:35
+msgid "Member"
+msgstr ""
+
+#: src/Admin/ListScreen.php:43
+msgid "Type"
+msgstr ""
+
+#: src/Admin/ListScreen.php:44
+#: templates/tabs/overview.php:42
+msgid "Level"
+msgstr ""
+
+#: src/Admin/ListScreen.php:45
+#: src/Model/Fields.php:132
+msgid "Status"
+msgstr ""
+
+#: src/Admin/ListScreen.php:46
+msgid "Renewal"
+msgstr ""
+
+#: src/Admin/ListScreen.php:47
+msgid "Logins"
+msgstr ""
+
+#: src/Admin/ListScreen.php:48
+msgid "Contact"
+msgstr ""
+
+#: src/Admin/ListScreen.php:169
+msgid "All types"
+msgstr ""
+
+#: src/Admin/ListScreen.php:171
+msgid "Individuals"
+msgstr ""
+
+#: src/Admin/ListScreen.php:173
+msgid "Businesses"
+msgstr ""
+
+#: src/Admin/ListScreen.php:179
+msgid "All levels"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:32
+#: src/Model/Registrar.php:79
+#: src/Model/Registrar.php:81
+msgid "Membership Levels"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:32
+msgid "Levels"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:33
+#: src/Admin/SettingsPage.php:123
+msgid "Member Settings"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:33
+#: src/Admin/SettingsPage.php:43
+msgid "Settings"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:101
+msgid "— Select a page —"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:108
+msgid "Edit"
+msgstr ""
+
+#. translators: %s: shortcode.
+#: src/Admin/SettingsPage.php:111
+#, php-format
+msgid "The page must contain %s."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:128
+msgid "Member pages"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:131
+msgid "Login page"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:132
+msgid "Member dashboard"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:133
+msgid "Join page"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:139
+msgid "Joining"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:142
+msgid "New members"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:145
+msgid "Staff add members and send invites (recommended)"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:146
+msgid "Anyone can apply on the Join page; staff approve"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:148
+msgid "Applications arrive as Pending members. Set their status to Active to approve them."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:155
+msgid "Renewals"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:158
+msgid "Lapsed memberships"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:160
+msgid "Mark active members as Lapsed automatically after their renewal date"
+msgstr ""
+
+#. translators: %s: number input.
+#: src/Admin/SettingsPage.php:165
+#, php-format
+msgid "Grace period: %s days"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:177
+msgid "Business directory"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:180
+msgid "New business members"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:183
+msgid "Publish their directory listing right away"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:184
+msgid "Create it as a draft for staff to complete"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:189
+msgid "Lapsed or inactive businesses"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:192
+msgid "Keep their listing in the directory"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:193
+msgid "Hide it until they renew (restored automatically)"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:202
+msgid "Email & data"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:205
+msgid "Emails come from"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:209
+msgid "On uninstall"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:210
+msgid "Permanently delete all member records and settings when the plugin is deleted (logins are kept)"
+msgstr ""
+
+#: src/Admin/UsersScreen.php:33
+msgid "Memberships"
+msgstr ""
+
+#: src/Admin/UsersScreen.php:34
+msgid "Last login"
+msgstr ""
+
+#. translators: %s: human time diff.
+#: src/Admin/UsersScreen.php:56
+#, php-format
+msgid "%s ago"
+msgstr ""
+
+#: src/Frontend/Auth.php:78
+msgid "Your session expired. Please try again."
+msgstr ""
+
+#: src/Frontend/Auth.php:112
+msgid "That email/username and password didn’t match. Please try again."
+msgstr ""
+
+#: src/Frontend/Auth.php:125
+msgid "Please enter your email address or username."
+msgstr ""
+
+#: src/Frontend/Auth.php:129
+#: src/Frontend/Auth.php:216
+msgid "Too many requests. Please wait a few minutes and try again."
+msgstr ""
+
+#: src/Frontend/Auth.php:146
+msgid "This link has expired or was already used. Request a new one below."
+msgstr ""
+
+#: src/Frontend/Auth.php:169
+msgid "Please use at least 8 characters."
+msgstr ""
+
+#: src/Frontend/Auth.php:172
+msgid "The two passwords don’t match."
+msgstr ""
+
+#: src/Frontend/Auth.php:180
+msgid "Applications are not open. Please contact us to join."
+msgstr ""
+
+#: src/Frontend/Auth.php:198
+msgid "Please enter your first and last name."
+msgstr ""
+
+#: src/Frontend/Auth.php:201
+msgid "Please enter your business name."
+msgstr ""
+
+#: src/Frontend/Auth.php:204
+#: src/Frontend/Auth.php:316
+#: src/Model/Accounts.php:38
+msgid "Please enter a valid email address."
+msgstr ""
+
+#: src/Frontend/Auth.php:206
+msgid "That email already has an account. Please log in instead."
+msgstr ""
+
+#: src/Frontend/Auth.php:236
+msgid "Something went wrong. Please try again."
+msgstr ""
+
+#. translators: %s: applicant name.
+#: src/Frontend/Auth.php:262
+#, php-format
+msgid "New membership application: %s"
+msgstr ""
+
+#: src/Frontend/Auth.php:266
+msgid "A new membership application is waiting for review."
+msgstr ""
+
+#. translators: %s: name.
+#: src/Frontend/Auth.php:269
+#, php-format
+msgid "Name: %s"
+msgstr ""
+
+#. translators: %s: business.
+#: src/Frontend/Auth.php:270
+#, php-format
+msgid "Business: %s"
+msgstr ""
+
+#. translators: %s: email.
+#: src/Frontend/Auth.php:272
+#, php-format
+msgid "Email: %s"
+msgstr ""
+
+#: src/Frontend/Auth.php:274
+msgid "Review it here:"
+msgstr ""
+
+#: src/Frontend/Auth.php:311
+msgid "Please enter your current password to change your email or password."
+msgstr ""
+
+#: src/Frontend/Auth.php:320
+msgid "That email is already used by another account."
+msgstr ""
+
+#: src/Frontend/Dashboard.php:32
+msgid "Overview"
+msgstr ""
+
+#: src/Frontend/Dashboard.php:43
+msgid "My Profile"
+msgstr ""
+
+#: src/Frontend/Pages.php:84
+msgid "If that account exists, we’ve emailed a link to choose a new password. Check your inbox (and spam folder)."
+msgstr ""
+
+#: src/Frontend/Pages.php:85
+msgid "Your password is set and you’re logged in. Welcome!"
+msgstr ""
+
+#: src/Frontend/Pages.php:86
+msgid "Thanks for applying! Your membership is pending review. We’ll email you once it’s approved."
+msgstr ""
+
+#: src/Frontend/Pages.php:87
+msgid "Your profile has been updated."
+msgstr ""
+
+#: src/ImportExport/Csv.php:108
+msgid "Could not read the file."
+msgstr ""
+
+#: src/ImportExport/Csv.php:114
+msgid "The file is empty."
+msgstr ""
+
+#. translators: %d: line number.
+#: src/ImportExport/Csv.php:148
+#, php-format
+msgid "Line %d: skipped — needs a first/last name (individual) or business_name (business)."
+msgstr ""
+
+#: src/Integration/Directory.php:111
+msgid "New business"
+msgstr ""
+
+#. translators: %s: site name.
+#: src/Model/Accounts.php:113
+#, php-format
+msgid "Your member account at %s"
+msgstr ""
+
+#. translators: %s: person's first name or email.
+#. translators: %s: first name or email.
+#: src/Model/Accounts.php:116
+#: src/Model/Accounts.php:175
+#, php-format
+msgid "Hi %s,"
+msgstr ""
+
+#. translators: 1: membership name, 2: site name.
+#: src/Model/Accounts.php:120
+#, php-format
+msgid "A member account has been created for you for %1$s at %2$s."
+msgstr ""
+
+#. translators: %s: site name.
+#: src/Model/Accounts.php:122
+#, php-format
+msgid "A member account has been created for you at %s."
+msgstr ""
+
+#: src/Model/Accounts.php:123
+msgid "Choose a password to get started:"
+msgstr ""
+
+#. translators: %s: login name.
+#: src/Model/Accounts.php:128
+#, php-format
+msgid "Your username is: %s"
+msgstr ""
+
+#. translators: %s: site name.
+#: src/Model/Accounts.php:170
+#, php-format
+msgid "Welcome! Your membership at %s is approved"
+msgstr ""
+
+#. translators: 1: membership name, 2: site name.
+#: src/Model/Accounts.php:178
+#, php-format
+msgid "Good news — the membership for %1$s at %2$s has been approved."
+msgstr ""
+
+#: src/Model/Accounts.php:179
+msgid "You can log in to your member dashboard here:"
+msgstr ""
+
+#: src/Model/Activation.php:78
+msgid "Membership Manager"
+msgstr ""
+
+#: src/Model/Activation.php:97
+msgid "Member Login"
+msgstr ""
+
+#: src/Model/Activation.php:98
+msgid "My Account"
+msgstr ""
+
+#: src/Model/Activation.php:100
+msgid "Become a Member"
+msgstr ""
+
+#: src/Model/Activation.php:139
+msgid "Platinum"
+msgstr ""
+
+#: src/Model/Activation.php:140
+msgid "Gold"
+msgstr ""
+
+#: src/Model/Activation.php:141
+msgid "Silver"
+msgstr ""
+
+#: src/Model/Fields.php:44
+msgid "Member type"
+msgstr ""
+
+#: src/Model/Fields.php:69
+#: templates/register.php:36
+msgid "Business name"
+msgstr ""
+
+#: src/Model/Fields.php:72
+msgid "Also used as the name of the business’s directory listing."
+msgstr ""
+
+#: src/Model/Fields.php:76
+msgid "Company / organization"
+msgstr ""
+
+#: src/Model/Fields.php:83
+#: templates/tabs/profile.php:36
+msgid "Job title"
+msgstr ""
+
+#: src/Model/Fields.php:90
+#: templates/register.php:49
+#: templates/tabs/profile.php:28
+msgid "Email"
+msgstr ""
+
+#: src/Model/Fields.php:97
+#: templates/register.php:53
+#: templates/tabs/profile.php:32
+msgid "Phone"
+msgstr ""
+
+#: src/Model/Fields.php:104
+msgid "Mailing address"
+msgstr ""
+
+#: src/Model/Fields.php:109
+msgid "Address line 2"
+msgstr ""
+
+#: src/Model/Fields.php:114
+msgid "City"
+msgstr ""
+
+#: src/Model/Fields.php:120
+msgid "State / province"
+msgstr ""
+
+#: src/Model/Fields.php:126
+msgid "ZIP / postal code"
+msgstr ""
+
+#: src/Model/Fields.php:141
+#: templates/tabs/overview.php:51
+msgid "Member ID"
+msgstr ""
+
+#: src/Model/Fields.php:148
+#: templates/tabs/overview.php:45
+msgid "Member since"
+msgstr ""
+
+#: src/Model/Fields.php:155
+msgid "Renewal date"
+msgstr ""
+
+#: src/Model/Fields.php:159
+msgid "When the current membership term ends."
+msgstr ""
+
+#: src/Model/Fields.php:163
+msgid "Staff notes"
+msgstr ""
+
+#: src/Model/Fields.php:167
+msgid "Private. Only visible to staff."
+msgstr ""
+
+#: src/Model/Fields.php:173
+msgid "Details"
+msgstr ""
+
+#: src/Model/Fields.php:177
+msgid "Address"
+msgstr ""
+
+#: src/Model/Fields.php:181
+msgid "Membership"
+msgstr ""
+
+#: src/Model/Registrar.php:34
+#: src/Model/Registrar.php:36
+msgid "Members"
+msgstr ""
+
+#: src/Model/Registrar.php:37
+msgid "All Members"
+msgstr ""
+
+#: src/Model/Registrar.php:38
+msgid "Add Member"
+msgstr ""
+
+#: src/Model/Registrar.php:39
+msgid "Add New Member"
+msgstr ""
+
+#: src/Model/Registrar.php:40
+msgid "Edit Member"
+msgstr ""
+
+#: src/Model/Registrar.php:41
+msgid "New Member"
+msgstr ""
+
+#: src/Model/Registrar.php:42
+msgid "Search Members"
+msgstr ""
+
+#: src/Model/Registrar.php:43
+msgid "No members found."
+msgstr ""
+
+#: src/Model/Registrar.php:44
+msgid "No members found in Trash."
+msgstr ""
+
+#: src/Model/Registrar.php:80
+msgid "Membership Level"
+msgstr ""
+
+#: src/Model/Registrar.php:82
+msgid "All Levels"
+msgstr ""
+
+#: src/Model/Registrar.php:83
+msgid "Edit Level"
+msgstr ""
+
+#: src/Model/Registrar.php:84
+msgid "Update Level"
+msgstr ""
+
+#: src/Model/Registrar.php:85
+msgid "Add New Level"
+msgstr ""
+
+#: src/Model/Registrar.php:86
+msgid "New Level Name"
+msgstr ""
+
+#: src/Model/Registrar.php:87
+msgid "No levels found."
+msgstr ""
+
+#: src/Schema/Identifiers.php:65
+msgid "Active"
+msgstr ""
+
+#: src/Schema/Identifiers.php:66
+msgid "Pending"
+msgstr ""
+
+#: src/Schema/Identifiers.php:67
+msgid "Lapsed"
+msgstr ""
+
+#: src/Schema/Identifiers.php:68
+msgid "Inactive"
+msgstr ""
+
+#. translators: %s: first name.
+#: templates/account.php:26
+#, php-format
+msgid "Hi, %s"
+msgstr ""
+
+#: templates/account.php:29
+#: templates/logged-in.php:22
+msgid "Log out"
+msgstr ""
+
+#: templates/account.php:34
+msgid "Account sections"
+msgstr ""
+
+#: templates/gate.php:22
+#: assets/blocks/editor.js:28
+msgid "This content is for members."
+msgstr ""
+
+#: templates/gate.php:24
+msgid "Your membership isn’t active right now. Please contact us to renew."
+msgstr ""
+
+#: templates/gate.php:28
+#: templates/login.php:48
+#: templates/register.php:70
+msgid "Log in"
+msgstr ""
+
+#: templates/gate.php:31
+msgid "Become a member"
+msgstr ""
+
+#. translators: %s: person's name.
+#: templates/logged-in.php:17
+#, php-format
+msgid "You’re logged in as %s"
+msgstr ""
+
+#: templates/logged-in.php:21
+msgid "Go to my account"
+msgstr ""
+
+#: templates/login.php:26
+msgid "Member login"
+msgstr ""
+
+#: templates/login.php:28
+msgid "You’ve been logged out."
+msgstr ""
+
+#: templates/login.php:33
+#: templates/lost-password.php:20
+msgid "Email or username"
+msgstr ""
+
+#: templates/login.php:37
+msgid "Password"
+msgstr ""
+
+#: templates/login.php:41
+msgid "Keep me logged in"
+msgstr ""
+
+#: templates/login.php:42
+msgid "Forgot password?"
+msgstr ""
+
+#: templates/login.php:51
+msgid "Not a member yet?"
+msgstr ""
+
+#: templates/login.php:51
+msgid "Apply to join"
+msgstr ""
+
+#: templates/lost-password.php:16
+msgid "Reset your password"
+msgstr ""
+
+#: templates/lost-password.php:18
+msgid "Enter your email address and we’ll send you a link to choose a new password."
+msgstr ""
+
+#: templates/lost-password.php:25
+msgid "Email me a link"
+msgstr ""
+
+#: templates/lost-password.php:26
+msgid "← Back to login"
+msgstr ""
+
+#: templates/register-closed.php:12
+msgid "Interested in becoming a member?"
+msgstr ""
+
+#: templates/register-closed.php:13
+msgid "Please get in touch with our team and we’ll set up your membership."
+msgstr ""
+
+#: templates/register.php:24
+msgid "Apply for membership"
+msgstr ""
+
+#: templates/register.php:28
+msgid "I’m joining as"
+msgstr ""
+
+#: templates/register.php:30
+msgid "An individual"
+msgstr ""
+
+#: templates/register.php:31
+msgid "A business"
+msgstr ""
+
+#: templates/register.php:53
+msgid "(optional)"
+msgstr ""
+
+#: templates/register.php:57
+msgid "Choose a password"
+msgstr ""
+
+#: templates/register.php:61
+#: templates/reset-password.php:35
+msgid "Confirm password"
+msgstr ""
+
+#: templates/register.php:69
+msgid "Submit application"
+msgstr ""
+
+#: templates/register.php:70
+msgid "Already a member?"
+msgstr ""
+
+#: templates/reset-password.php:21
+msgid "This link has expired"
+msgstr ""
+
+#: templates/reset-password.php:22
+msgid "Password links can only be used once and expire after a day. Request a new one:"
+msgstr ""
+
+#: templates/reset-password.php:23
+msgid "Send a new link"
+msgstr ""
+
+#: templates/reset-password.php:27
+msgid "Choose your password"
+msgstr ""
+
+#: templates/reset-password.php:30
+#: templates/tabs/profile.php:45
+msgid "New password"
+msgstr ""
+
+#: templates/reset-password.php:32
+msgid "At least 8 characters."
+msgstr ""
+
+#: templates/reset-password.php:42
+msgid "Save password & log in"
+msgstr ""
+
+#: templates/tabs/overview.php:22
+msgid "Your account isn’t linked to a membership yet. If you think this is a mistake, please contact us."
+msgstr ""
+
+#: templates/tabs/overview.php:36
+msgid "Business membership"
+msgstr ""
+
+#: templates/tabs/overview.php:36
+msgid "Individual membership"
+msgstr ""
+
+#: templates/tabs/overview.php:48
+msgid "Renews"
+msgstr ""
+
+#: templates/tabs/overview.php:55
+msgid "Your application is being reviewed. We’ll email you when it’s approved."
+msgstr ""
+
+#: templates/tabs/overview.php:57
+msgid "This membership has lapsed. Please contact us to renew."
+msgstr ""
+
+#: templates/tabs/overview.php:60
+msgid "View your directory listing →"
+msgstr ""
+
+#: templates/tabs/profile.php:16
+msgid "My profile"
+msgstr ""
+
+#: templates/tabs/profile.php:41
+msgid "Change password"
+msgstr ""
+
+#: templates/tabs/profile.php:42
+msgid "Leave blank to keep your current password. Your current password is needed to change your email or password."
+msgstr ""
+
+#: templates/tabs/profile.php:49
+msgid "Confirm new password"
+msgstr ""
+
+#: templates/tabs/profile.php:53
+msgid "Current password"
+msgstr ""
+
+#: templates/tabs/profile.php:60
+msgid "Save changes"
+msgstr ""
+
+#: assets/blocks/editor.js:24
+msgid "Visitors who aren’t members"
+msgstr ""
+
+#: assets/blocks/editor.js:26
+msgid "Message"
+msgstr ""
+
+#: assets/blocks/editor.js:27
+msgid "Shown instead of this content, with a login button."
+msgstr ""
+
+#: assets/blocks/editor.js:39
+#: assets/blocks/editor.js:69
+msgid "Members only"
+msgstr ""
+
+#: assets/blocks/editor.js:67
+msgid "Member access"
+msgstr ""
+
+#: assets/blocks/editor.js:70
+msgid "Only current members can see this page’s content. It’s also hidden from search engines."
+msgstr ""
+
+#: blocks/members-only/block.json
+msgctxt "block title"
+msgid "Members Only"
+msgstr ""
+
+#: blocks/members-only/block.json
+msgctxt "block description"
+msgid "Content inside this block is only shown to current members. Everyone else sees a login prompt."
+msgstr ""
+
+#: blocks/members-only/block.json
+msgctxt "block keyword"
+msgid "members"
+msgstr ""
+
+#: blocks/members-only/block.json
+msgctxt "block keyword"
+msgid "restrict"
+msgstr ""
+
+#: blocks/members-only/block.json
+msgctxt "block keyword"
+msgid "private"
+msgstr ""
+
+#: blocks/members-only/block.json
+msgctxt "block keyword"
+msgid "gate"
+msgstr ""
+
+#: blocks/members-only/block.json
+msgctxt "block keyword"
+msgid "login"
+msgstr ""

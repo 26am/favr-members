@@ -1,0 +1,399 @@
+/*
+ * Favr Members — front end. Inherits the theme's fonts and colors.
+ * Tune with custom properties, e.g. .favr-m { --favr-m-accent: #0a7; }
+ */
+
+.favr-m {
+	--favr-m-accent: var(--wp--preset--color--primary, #1f5fbf);
+	--favr-m-accent-contrast: #fff;
+	--favr-m-border: color-mix(in srgb, currentColor 16%, transparent);
+	--favr-m-soft: color-mix(in srgb, currentColor 4%, transparent);
+	--favr-m-muted: color-mix(in srgb, currentColor 62%, transparent);
+	--favr-m-surface: var(--wp--preset--color--base, #fff);
+	--favr-m-radius: 14px;
+	box-sizing: border-box;
+	margin-block: 1.5rem;
+}
+
+.favr-m *,
+.favr-m *::before {
+	box-sizing: inherit;
+}
+
+.favr-m-card {
+	padding: clamp(1.25rem, 3vw, 2rem);
+	border: 1px solid var(--favr-m-border);
+	border-radius: var(--favr-m-radius);
+	background: var(--favr-m-surface);
+	box-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 20px rgba(15, 23, 42, .06);
+}
+
+.favr-m-form {
+	max-width: 440px;
+	margin-inline: auto;
+}
+
+.favr-m-form--wide {
+	max-width: none;
+}
+
+.favr-m .favr-m-card__title {
+	margin: 0 0 1.25rem;
+	font-size: clamp(1.35rem, 1.1rem + 1vw, 1.75rem);
+	line-height: 1.2;
+}
+
+.favr-m .favr-m-subtitle {
+	margin: 1.75rem 0 .25rem;
+	font-size: 1.1rem;
+}
+
+.favr-m-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+	gap: 0 1.25rem;
+}
+
+.favr-m-field {
+	display: flex;
+	flex-direction: column;
+	gap: .35rem;
+	margin: 0 0 1rem;
+	border: 0;
+	padding: 0;
+}
+
+.favr-m-field label,
+.favr-m-field legend {
+	font-weight: 600;
+	font-size: .95rem;
+	padding: 0;
+}
+
+.favr-m-field input[type="text"],
+.favr-m-field input[type="email"],
+.favr-m-field input[type="tel"],
+.favr-m-field input[type="password"] {
+	width: 100%;
+	min-height: 46px;
+	margin: 0;
+	padding: .6em .85em;
+	border: 1px solid var(--favr-m-border);
+	border-radius: 8px;
+	background: var(--favr-m-surface);
+	color: inherit;
+	font: inherit;
+	font-size: 1rem;
+}
+
+.favr-m-field input:focus {
+	outline: none;
+	border-color: var(--favr-m-accent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--favr-m-accent) 20%, transparent);
+}
+
+.favr-m-hint,
+.favr-m-optional {
+	color: var(--favr-m-muted);
+	font-size: .88rem;
+	font-weight: 400;
+}
+
+.favr-m-row {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+	gap: .5rem;
+	margin: 0 0 1.25rem;
+	font-size: .92rem;
+}
+
+.favr-m-check {
+	display: inline-flex;
+	align-items: center;
+	gap: .4em;
+}
+
+.favr-m-foot {
+	margin: 1.25rem 0 0;
+	text-align: center;
+	font-size: .92rem;
+}
+
+.favr-m-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: .4em;
+	min-height: 46px;
+	padding: .6em 1.4em;
+	border: 1px solid var(--favr-m-border);
+	border-radius: 999px;
+	background: var(--favr-m-surface);
+	color: inherit !important;
+	font: inherit;
+	font-weight: 600;
+	text-decoration: none !important;
+	cursor: pointer;
+	transition: background .15s, border-color .15s;
+}
+
+.favr-m-btn:hover {
+	border-color: var(--favr-m-accent);
+}
+
+.favr-m-btn--primary {
+	background: var(--favr-m-accent);
+	border-color: var(--favr-m-accent);
+	color: var(--favr-m-accent-contrast) !important;
+}
+
+.favr-m-form .favr-m-btn--primary {
+	width: 100%;
+}
+
+.favr-m-form--wide .favr-m-btn--primary {
+	width: auto;
+}
+
+.favr-m-btn--primary:hover {
+	background: color-mix(in srgb, var(--favr-m-accent) 86%, #000);
+}
+
+.favr-m-notice {
+	margin: 0 0 1.25rem;
+	padding: .8rem 1rem;
+	border-radius: 8px;
+	font-size: .95rem;
+}
+
+.favr-m-notice p {
+	margin: 0;
+}
+
+.favr-m-notice--success {
+	background: #ecfdf3;
+	color: #05603a;
+}
+
+.favr-m-notice--error {
+	background: #fef3f2;
+	color: #b42318;
+}
+
+/* Join: segmented type picker; business-only fields follow the choice. */
+.favr-m-segmented {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding: 4px;
+	border-radius: 999px;
+	background: var(--favr-m-soft);
+}
+
+.favr-m-segmented label {
+	position: relative;
+	cursor: pointer;
+}
+
+.favr-m-segmented input {
+	position: absolute;
+	opacity: 0;
+}
+
+.favr-m-segmented span {
+	display: inline-block;
+	padding: .5em 1.2em;
+	border-radius: 999px;
+	font-weight: 600;
+}
+
+.favr-m-segmented input:checked + span {
+	background: var(--favr-m-surface);
+	color: var(--favr-m-accent);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
+}
+
+.favr-m-segmented input:focus-visible + span {
+	outline: 2px solid var(--favr-m-accent);
+}
+
+.favr-m-form:has(input[name="type"][value="individual"]:checked) .favr-m-business-only {
+	display: none;
+}
+
+.favr-m-hp {
+	position: absolute !important;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+/* Dashboard */
+.favr-m-account__head {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	margin: 0 0 1.25rem;
+}
+
+.favr-m-avatar {
+	display: grid;
+	place-items: center;
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	background: var(--favr-m-accent);
+	color: var(--favr-m-accent-contrast);
+	font-size: 1.4rem;
+	font-weight: 700;
+}
+
+.favr-m-account__hello {
+	margin: 0;
+	font-size: 1.35rem;
+	font-weight: 700;
+}
+
+.favr-m-account__logout {
+	font-size: .9rem;
+	color: var(--favr-m-muted);
+}
+
+.favr-m-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .25rem;
+	margin: 0 0 1.5rem;
+	border-bottom: 1px solid var(--favr-m-border);
+}
+
+.favr-m-tabs__item {
+	margin-bottom: -1px;
+	padding: .7rem 1rem;
+	border-bottom: 3px solid transparent;
+	color: inherit;
+	font-weight: 600;
+	text-decoration: none !important;
+}
+
+.favr-m-tabs__item:hover {
+	color: var(--favr-m-accent);
+}
+
+.favr-m-tabs__item.is-active {
+	border-bottom-color: var(--favr-m-accent);
+	color: var(--favr-m-accent);
+}
+
+.favr-m-memberships {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+	gap: 1.25rem;
+}
+
+.favr-m-membership__top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: .5rem;
+}
+
+.favr-m-type {
+	color: var(--favr-m-muted);
+	font-size: .8rem;
+	font-weight: 700;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+}
+
+.favr-m .favr-m-membership__name {
+	margin: .5rem 0 1rem;
+	font-size: 1.3rem;
+}
+
+.favr-m-status {
+	padding: .2em .75em;
+	border-radius: 999px;
+	font-size: .8rem;
+	font-weight: 700;
+	background: var(--favr-m-soft);
+}
+
+.favr-m-status--active {
+	background: #ecfdf3;
+	color: #05603a;
+}
+
+.favr-m-status--pending {
+	background: #fffaeb;
+	color: #93370d;
+}
+
+.favr-m-status--lapsed {
+	background: #fef3f2;
+	color: #b42318;
+}
+
+.favr-m-facts {
+	display: grid;
+	gap: .5rem;
+	margin: 0 0 1rem;
+}
+
+.favr-m-facts div {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	padding-bottom: .5rem;
+	border-bottom: 1px solid var(--favr-m-border);
+}
+
+.favr-m-facts dt {
+	color: var(--favr-m-muted);
+}
+
+.favr-m-facts dd {
+	margin: 0;
+	font-weight: 600;
+}
+
+/* Members-only gate */
+.favr-m-gate__card {
+	max-width: 520px;
+	margin-inline: auto;
+	text-align: center;
+}
+
+.favr-m-gate__icon {
+	display: inline-grid;
+	place-items: center;
+	width: 56px;
+	height: 56px;
+	margin-bottom: .75rem;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--favr-m-accent) 12%, transparent);
+	color: var(--favr-m-accent);
+}
+
+.favr-m-gate__title {
+	margin: 0 0 1rem;
+	font-size: 1.2rem;
+	font-weight: 700;
+}
+
+.favr-m-gate .favr-m-btn {
+	margin: .25rem;
+}
+
+/* Let grid columns shrink below the inputs' intrinsic width (no overflow on narrow cards). */
+.favr-m-grid > *,
+.favr-m-field input {
+	min-width: 0;
+}
+
+.favr-m-segmented {
+	align-self: flex-start;
+}
