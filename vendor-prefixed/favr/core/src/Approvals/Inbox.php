@@ -21,9 +21,13 @@ namespace FavrMembers\Vendor\FavrCore\Approvals;
  *  - items       callable(): list<array{id: int, title: string, subtitle?: string, edit_url?: string, time?: int, details: string, fields?: array<string,string>}>
  *                         `details` is escaped HTML (e.g. from Inbox::diff()); `fields` (key => label)
  *                         enables approving individual fields.
- *  - decide      callable( int $id, string $decision approve|reject, ?list<string> $fields, string $note ): string
+ *  - decide      callable( int $id, string $decision approve|reject, ?list<string> $fields, string $note, string $version ): string
  *                         $fields is null when the item had no field checkboxes (act on everything),
- *                         otherwise the ticked fields (possibly none). Returns a human result message.
+ *                         otherwise the ticked fields (possibly none). $version echoes the item's
+ *                         `version` (see below) so a provider can refuse to act on something that
+ *                         changed after the reviewer loaded the page. Returns a human result message.
+ *  - count       optional callable(): int, a cheap count for the menu badge (else items() is counted).
+ * Items may carry `version` (string): a fingerprint of what the reviewer is looking at.
  */
 final class Inbox {
 
@@ -58,7 +62,7 @@ final class Inbox {
 	public static function count(): int {
 		$total = 0;
 		foreach ( self::providers() as $provider ) {
-			$total += count( (array) call_user_func( $provider['items'] ) );
+			$total += isset( $provider['count'] ) && is_callable( $provider['count'] ) ? (int) call_user_func( $provider['count'] ) : count( (array) call_user_func( $provider['items'] ) );
 		}
 		return $total;
 	}
@@ -84,8 +88,8 @@ final class Inbox {
 	/** The screen. */
 	public static function render(): void {
 		$providers = self::providers();
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
-		$message = isset( $_GET['favr_result'] ) ? sanitize_text_field( wp_unslash( $_GET['favr_result'] ) ) : '';
+		$message   = (string) get_transient( 'favr_approvals_result_' . get_current_user_id() );
+		delete_transient( 'favr_approvals_result_' . get_current_user_id() );
 		echo '<style>.favr-approvals__item{background:#fff;border:1px solid #c3c4c7;padding:12px 16px;margin:0 0 12px;max-width:1100px}.favr-approvals__head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}.favr-approvals__sub,.favr-approvals__time{color:#646970}.favr-diff td,.favr-diff th{vertical-align:top}.favr-diff__old{color:#8a2424}.favr-diff__new{color:#00632b}.favr-diff img{max-width:80px;height:auto;margin:0 4px 4px 0}.favr-approvals__fields label{margin-right:12px;white-space:nowrap}.favr-approvals__done{font-size:15px}</style>';
 		echo '<div class="wrap favr-approvals"><h1>' . esc_html__( 'Approvals', 'favr-core' ) . '</h1>';
 		if ( '' !== $message ) {
@@ -142,7 +146,12 @@ final class Inbox {
 			esc_html( count( $fields ) > 1 ? __( 'Approve selected', 'favr-core' ) : __( 'Approve', 'favr-core' ) ),
 			esc_html__( 'Reject', 'favr-core' )
 		);
-		printf( '<input type="hidden" name="action" value="favr_approval"><input type="hidden" name="provider" value="%1$s"><input type="hidden" name="item" value="%2$d">', esc_attr( (string) $provider['id'] ), (int) $item['id'] );
+		printf(
+			'<input type="hidden" name="action" value="favr_approval"><input type="hidden" name="provider" value="%1$s"><input type="hidden" name="item" value="%2$d"><input type="hidden" name="version" value="%3$s">',
+			esc_attr( (string) $provider['id'] ),
+			(int) $item['id'],
+			esc_attr( (string) ( $item['version'] ?? '' ) )
+		);
 		wp_nonce_field( 'favr_approval_' . $provider['id'] . '_' . (int) $item['id'] );
 		echo '</form>';
 	}
@@ -164,8 +173,10 @@ final class Inbox {
 		$decision = isset( $_POST['decision'] ) && 'reject' === $_POST['decision'] ? 'reject' : 'approve';
 		$fields   = isset( $_POST['fields_shown'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['fields'] ?? array() ) ) : null;
 		$note     = sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) );
-		$result   = (string) call_user_func( $provider['decide'], $item, $decision, $fields, $note );
-		wp_safe_redirect( add_query_arg( 'favr_result', rawurlencode( $result ), admin_url( 'admin.php?page=' . self::PAGE ) ) );
+		$version  = isset( $_POST['version'] ) ? sanitize_text_field( wp_unslash( $_POST['version'] ) ) : '';
+		$result   = (string) call_user_func( $provider['decide'], $item, $decision, $fields, $note, $version );
+		set_transient( 'favr_approvals_result_' . get_current_user_id(), $result, 120 );
+		wp_safe_redirect( admin_url( 'admin.php?page=' . self::PAGE ) );
 		exit;
 	}
 

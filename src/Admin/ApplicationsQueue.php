@@ -38,6 +38,7 @@ final class ApplicationsQueue {
 			'capability' => 'edit_others_' . ID::CAP_PLURAL,
 			'items'      => array( $this, 'items' ),
 			'decide'     => array( $this, 'decide' ),
+			'count'      => static fn(): int => (int) ( \FavrMembers\Model\Repository::statusCounts()[ ID::STATUS_PENDING ] ?? 0 ),
 		);
 		return $providers;
 	}
@@ -73,6 +74,9 @@ final class ApplicationsQueue {
 				$details .= '<tr><th scope="row">' . esc_html( $label ) . '</th><td>' . esc_html( $value ) . '</td></tr>';
 			}
 			$details .= '</tbody></table>';
+			if ( $member->isBusiness() && \FavrMembers\Integration\Directory::sameName( $member->name() ) ) {
+				$details .= '<p class="description"><strong>' . esc_html__( 'A directory listing with this name already exists.', 'favr-members' ) . '</strong> ' . esc_html__( 'Approving creates a new listing; it won’t take over the existing one. If it really is theirs, link it on the member screen instead.', 'favr-members' ) . '</p>';
+			}
 			if ( $member->userIds() && ! $verified ) {
 				$details .= '<p class="description">' . esc_html__( 'The applicant hasn’t confirmed their email address yet. You can still approve; they’ll set a password from the link they were sent.', 'favr-members' ) . '</p>';
 			}
@@ -82,6 +86,7 @@ final class ApplicationsQueue {
 				'subtitle' => __( 'applied to join', 'favr-members' ),
 				'edit_url' => (string) get_edit_post_link( $member->id(), 'raw' ),
 				'time'     => (int) get_post_time( 'U', true, $post ),
+				'version'  => ID::STATUS_PENDING,
 				'details'  => $details,
 			);
 		}

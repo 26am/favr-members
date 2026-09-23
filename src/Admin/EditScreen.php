@@ -268,7 +268,26 @@ final class EditScreen {
 				esc_html__( 'Level, member since, renewal date and member ID are kept in sync from this record.', 'favr-members' )
 			);
 		} else {
-			echo '<p>' . esc_html__( 'A directory listing will be created for this business when you save.', 'favr-members' ) . '</p>';
+			$unlinked = get_posts(
+				array(
+					'post_type'      => ID::DIRECTORY_POST_TYPE,
+					'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+					'posts_per_page' => 500, // phpcs:ignore WordPress.WP.PostsPerPage.posts_per_page_posts_per_page -- one admin select; chambers have hundreds of listings at most.
+					'orderby'        => 'title',
+					'order'          => 'ASC',
+					'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- admin-only, once per screen.
+						array(
+							'key'     => ID::BUSINESS_LINK,
+							'compare' => 'NOT EXISTS',
+						),
+					),
+				)
+			);
+			echo '<p><label for="favr-member-link-listing">' . esc_html__( 'Use an existing listing', 'favr-members' ) . '</label><select id="favr-member-link-listing" name="favr_member_link_listing" class="widefat"><option value="0">' . esc_html__( '— Create a new listing —', 'favr-members' ) . '</option>';
+			foreach ( $unlinked as $candidate ) {
+				printf( '<option value="%1$d">%2$s</option>', (int) $candidate->ID, esc_html( get_the_title( $candidate ) ) );
+			}
+			echo '</select></p><p class="description">' . esc_html__( 'Otherwise a listing is created when the membership is active.', 'favr-members' ) . '</p>';
 		}
 		echo '</div><p class="favr-only-individual description">' . esc_html__( 'Individual members don’t have a directory listing.', 'favr-members' ) . '</p>';
 	}
@@ -334,6 +353,11 @@ final class EditScreen {
 
 		$member = new Member( get_post( $post_id ) ?? $post );
 		$invite = ! empty( $_POST['favr_member_send_invite'] );
+
+		$link_to = absint( wp_unslash( $_POST['favr_member_link_listing'] ?? 0 ) );
+		if ( $link_to && $member->isBusiness() && ! Directory::link( $member, $link_to ) ) {
+			$warnings[] = __( 'That listing could not be linked (it may already belong to another member).', 'favr-members' );
+		}
 
 		// Remove access.
 		foreach ( array_map( 'absint', (array) wp_unslash( $_POST['favr_member_remove_users'] ?? array() ) ) as $user_id ) {

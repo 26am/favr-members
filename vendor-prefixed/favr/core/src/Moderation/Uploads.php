@@ -48,9 +48,11 @@ final class Uploads {
 		// The bytes must really be a decodable image, not just carry an image signature.
 		$size   = function_exists( 'wp_getimagesize' ) ? wp_getimagesize( (string) $file['tmp_name'] ) : false;
 		$editor = wp_get_image_editor( (string) $file['tmp_name'] );
+		// A PHP open tag has no business in an image (the chance of "<?php" occurring in compressed
+		// image data by accident is negligible, unlike shorter tags).
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local temp file.
 		$bytes = (string) file_get_contents( (string) $file['tmp_name'] );
-		if ( ! is_array( $size ) || empty( $size[0] ) || empty( $size[1] ) || is_wp_error( $editor ) || preg_match( '/<\?(php|=)/i', $bytes ) ) {
+		if ( ! is_array( $size ) || empty( $size[0] ) || empty( $size[1] ) || is_wp_error( $editor ) || false !== stripos( $bytes, '<?php' ) ) {
 			return new \WP_Error( 'favr_upload_type', __( 'Please upload a JPG, PNG, WebP or GIF image.', 'favr-core' ), array( 'status' => 415 ) );
 		}
 

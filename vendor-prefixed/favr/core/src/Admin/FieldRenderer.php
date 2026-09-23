@@ -96,6 +96,61 @@ final class FieldRenderer {
 	}
 
 	/**
+	 * A complete tabbed panel (tabs on the left, one pane per tab), as used by every Favr edit
+	 * screen and front-end form. Empty tabs are skipped.
+	 *
+	 * @param array<string, array{label: string, icon?: string}> $tabs     Tab id => tab.
+	 * @param array<string, list<array<string, mixed>>>          $fields   Tab id => normalized fields.
+	 * @param callable(array<string, mixed>): mixed              $value_of Current value of a field.
+	 * @param array<string, mixed>                               $args     id (DOM id prefix), label (aria),
+	 *                                                                     after_field callable( field ), after_tab callable( tab_id ).
+	 */
+	public function panel( array $tabs, array $fields, callable $value_of, array $args = array() ): void {
+		$prefix = (string) ( $args['id'] ?? 'favr' );
+		$tabs   = array_filter( $tabs, static fn( $tab, $tab_id ): bool => ! empty( $fields[ $tab_id ] ), ARRAY_FILTER_USE_BOTH );
+
+		printf( '<div class="favr-panel" id="%s-panel">', esc_attr( $prefix ) );
+		printf( '<nav class="favr-tabs" role="tablist" aria-label="%s">', esc_attr( (string) ( $args['label'] ?? __( 'Sections', 'favr-core' ) ) ) );
+		$first = true;
+		foreach ( $tabs as $tab_id => $tab ) {
+			printf(
+				'<button type="button" role="tab" class="favr-tab%1$s" id="%6$s-tab-%2$s" aria-controls="%6$s-pane-%2$s" aria-selected="%3$s" data-tab="%2$s"><span class="dashicons %4$s" aria-hidden="true"></span><span class="favr-tab__label">%5$s</span><span class="favr-tab__dot" aria-hidden="true"></span></button>',
+				$first ? ' is-active' : '',
+				esc_attr( (string) $tab_id ),
+				$first ? 'true' : 'false',
+				esc_attr( (string) ( $tab['icon'] ?? 'dashicons-admin-generic' ) ),
+				esc_html( (string) $tab['label'] ),
+				esc_attr( $prefix )
+			);
+			$first = false;
+		}
+		echo '</nav><div class="favr-panes">';
+		$first = true;
+		foreach ( $tabs as $tab_id => $tab ) {
+			printf(
+				'<section class="favr-pane%1$s" role="tabpanel" id="%5$s-pane-%2$s" aria-labelledby="%5$s-tab-%2$s"%3$s><h2 class="favr-pane__title">%4$s</h2><div class="favr-grid">',
+				$first ? ' is-active' : '',
+				esc_attr( (string) $tab_id ),
+				$first ? '' : ' hidden',
+				esc_html( (string) $tab['label'] ),
+				esc_attr( $prefix )
+			);
+			foreach ( $fields[ $tab_id ] as $field ) {
+				$this->render( $field, $value_of( $field ) );
+				if ( isset( $args['after_field'] ) && is_callable( $args['after_field'] ) ) {
+					call_user_func( $args['after_field'], $field );
+				}
+			}
+			if ( isset( $args['after_tab'] ) && is_callable( $args['after_tab'] ) ) {
+				call_user_func( $args['after_tab'], (string) $tab_id );
+			}
+			echo '</div></section>';
+			$first = false;
+		}
+		echo '</div></div>';
+	}
+
+	/**
 	 * Input name for a field (optionally nested).
 	 *
 	 * @param string $id   Field id.

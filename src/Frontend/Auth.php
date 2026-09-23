@@ -299,6 +299,7 @@ final class Auth {
 		foreach ( array_filter( $values ) as $key => $value ) {
 			update_post_meta( (int) $member_id, ID::meta( $key ), $value );
 		}
+		update_post_meta( (int) $member_id, ID::META_APPLIED, 1 );
 		$member = Member::find( (int) $member_id );
 		if ( $member ) {
 			$member->addUser( $user_id );

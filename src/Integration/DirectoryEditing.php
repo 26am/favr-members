@@ -33,6 +33,8 @@ final class DirectoryEditing {
 		add_filter( 'favr_directory_edit_url', array( $this, 'editUrl' ) );
 		add_filter( 'favr_directory_login_url', array( $this, 'loginUrl' ), 10, 2 );
 		add_filter( 'favr_directory_managed_elsewhere', array( $this, 'managedElsewhere' ), 10, 2 );
+		add_filter( 'favr_directory_representatives', array( $this, 'representatives' ), 10, 2 );
+		add_filter( 'favr_directory_claim_note', array( $this, 'claimNote' ), 10, 2 );
 	}
 
 	/**
@@ -161,6 +163,37 @@ final class DirectoryEditing {
 			/* translators: %s: member name. */
 			'label' => sprintf( __( 'Manage representatives on %s →', 'favr-members' ), $member->name() ),
 			'url'   => (string) get_edit_post_link( $member->id(), 'raw' ),
+		);
+	}
+
+	/**
+	 * Filter: include the linked member's representatives.
+	 *
+	 * @param list<int> $user_ids User ids.
+	 * @param int       $post_id  Business.
+	 * @return list<int>
+	 */
+	public function representatives( $user_ids, $post_id ): array {
+		$member = Repository::forListing( (int) $post_id );
+		return array_merge( array_map( 'intval', (array) $user_ids ), $member ? $member->userIds() : array() );
+	}
+
+	/**
+	 * Filter: explain what approving a claim grants.
+	 *
+	 * @param string $note    Note.
+	 * @param int    $post_id Business.
+	 */
+	public function claimNote( $note, $post_id ): string {
+		$member = Repository::forListing( (int) $post_id );
+		if ( ! $member || ! $member->isBusiness() ) {
+			return (string) $note;
+		}
+		return sprintf(
+			/* translators: 1: member name, 2: status. */
+			__( 'Approving adds this person as a representative of the member “%1$s” (%2$s), with access to member-only content, not just this listing.', 'favr-members' ),
+			$member->name(),
+			ID::statuses()[ $member->status() ] ?? $member->status()
 		);
 	}
 

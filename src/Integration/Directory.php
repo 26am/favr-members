@@ -109,7 +109,7 @@ final class Directory {
 		if ( ! $listing_id && ! self::mayCreateListing( $member->status() ) ) {
 			return; // Applications get a listing once approved, never before.
 		}
-		if ( ! $listing_id ) {
+		if ( ! $listing_id && self::mayAdopt( $context, (bool) get_post_meta( $member->id(), ID::META_APPLIED, true ) ) ) {
 			$listing_id = $this->adoptListing( $member );
 		}
 		if ( ! $listing_id ) {
@@ -127,6 +127,55 @@ final class Directory {
 		$this->copy( $listing_id, 'favr_member_id', $member->text( 'member_number' ) );
 
 		$this->applyVisibility( $member, $listing_id );
+	}
+
+	/**
+	 * Pure rule: may a same-named listing be linked automatically? Only for records staff
+	 * created or imported. An application's name is typed by the applicant, and linking would
+	 * hand them edit rights to someone else's listing; staff link those explicitly.
+	 *
+	 * @param string $context Save context.
+	 * @param bool   $applied Record came from an application.
+	 */
+	public static function mayAdopt( string $context, bool $applied ): bool {
+		return ! $applied && in_array( $context, array( 'save', 'import' ), true );
+	}
+
+	/**
+	 * Unlinked listings with this exact name (for staff to review).
+	 *
+	 * @param string $name Business name.
+	 * @return list<int>
+	 */
+	public static function sameName( string $name ): array {
+		if ( '' === $name || ! self::available() ) {
+			return array();
+		}
+		$ids = get_posts(
+			array(
+				'post_type'      => ID::DIRECTORY_POST_TYPE,
+				'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+				'title'          => $name,
+				'posts_per_page' => 5,
+				'fields'         => 'ids',
+			)
+		);
+		return array_values( array_filter( array_map( 'intval', $ids ), static fn( int $id ): bool => ! get_post_meta( $id, ID::BUSINESS_LINK, true ) ) );
+	}
+
+	/**
+	 * Staff explicitly link an existing listing to a member.
+	 *
+	 * @param Member $member     Member.
+	 * @param int    $listing_id Listing.
+	 */
+	public static function link( Member $member, int $listing_id ): bool {
+		if ( ! self::available() || $member->listingId() || ID::DIRECTORY_POST_TYPE !== get_post_type( $listing_id ) || get_post_meta( $listing_id, ID::BUSINESS_LINK, true ) || ! current_user_can( 'edit_post', $listing_id ) ) {
+			return false;
+		}
+		update_post_meta( $listing_id, ID::BUSINESS_LINK, $member->id() );
+		update_post_meta( $member->id(), ID::META_LISTING, $listing_id );
+		return true;
 	}
 
 	/**

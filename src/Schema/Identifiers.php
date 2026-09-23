@@ -19,6 +19,7 @@ final class Identifiers {
 	public const META_USER       = 'favr_member_user'; // One row per linked login (multi-value).
 	public const META_LISTING    = 'favr_member_listing';
 	public const META_HIDDEN     = '_favr_member_hid_listing';
+	public const META_APPLIED    = '_favr_member_applied'; // Created by a "Become a Member" application.
 	public const BUSINESS_LINK   = '_favr_member_record'; // On favr_business: its member record.
 	public const OPTION_SETTINGS = 'favr_members_settings';
 	public const OPTION_VERSION  = 'favr_members_version';
