@@ -41,6 +41,7 @@ final class Plugin {
 		( new Model\Accounts() )->hook();
 		( new Model\Lapse() )->hook();
 		( new Integration\Directory() )->hook();
+		( new Integration\DirectoryEditing() )->hook();
 
 		( new Frontend\Auth() )->hook();
 		( new Frontend\Pages() )->hook();
@@ -56,6 +57,8 @@ final class Plugin {
 			( new Admin\LevelScreen() )->hook();
 			( new Admin\SettingsPage() )->hook();
 			( new Admin\ImportExportPage() )->hook();
+			( new Admin\ApplicationsQueue() )->hook();
+			\FavrMembers\Vendor\FavrCore\Approvals\Inbox::boot();
 		}
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {

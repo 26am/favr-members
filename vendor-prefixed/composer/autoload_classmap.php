@@ -8,10 +8,14 @@ $baseDir = dirname($vendorDir);
 return array(
     'FavrMembers\\Vendor\\Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
     'FavrMembers\\Vendor\\FavrCore\\Admin\\FieldRenderer' => $vendorDir . '/favr/core/src/Admin/FieldRenderer.php',
+    'FavrMembers\\Vendor\\FavrCore\\Approvals\\Inbox' => $vendorDir . '/favr/core/src/Approvals/Inbox.php',
     'FavrMembers\\Vendor\\FavrCore\\Fields\\FieldSet' => $vendorDir . '/favr/core/src/Fields/FieldSet.php',
     'FavrMembers\\Vendor\\FavrCore\\Fields\\Sanitizer' => $vendorDir . '/favr/core/src/Fields/Sanitizer.php',
+    'FavrMembers\\Vendor\\FavrCore\\Moderation\\PendingChanges' => $vendorDir . '/favr/core/src/Moderation/PendingChanges.php',
+    'FavrMembers\\Vendor\\FavrCore\\Moderation\\Uploads' => $vendorDir . '/favr/core/src/Moderation/Uploads.php',
     'FavrMembers\\Vendor\\FavrCore\\Support\\AssetVersion' => $vendorDir . '/favr/core/src/Support/AssetVersion.php',
     'FavrMembers\\Vendor\\FavrCore\\Support\\CsvFormat' => $vendorDir . '/favr/core/src/Support/CsvFormat.php',
     'FavrMembers\\Vendor\\FavrCore\\Support\\Hours' => $vendorDir . '/favr/core/src/Support/Hours.php',
+    'FavrMembers\\Vendor\\FavrCore\\Support\\RateLimit' => $vendorDir . '/favr/core/src/Support/RateLimit.php',
     'FavrMembers\\Vendor\\FavrCore\\Support\\Template' => $vendorDir . '/favr/core/src/Support/Template.php',
 );

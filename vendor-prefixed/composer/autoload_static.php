@@ -23,11 +23,15 @@ class ComposerStaticInit3ffd5bdd9a33a4b482629fbf95970454
     public static $classMap = array (
         'FavrMembers\\Vendor\\Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'FavrMembers\\Vendor\\FavrCore\\Admin\\FieldRenderer' => __DIR__ . '/..' . '/favr/core/src/Admin/FieldRenderer.php',
+        'FavrMembers\\Vendor\\FavrCore\\Approvals\\Inbox' => __DIR__ . '/..' . '/favr/core/src/Approvals/Inbox.php',
         'FavrMembers\\Vendor\\FavrCore\\Fields\\FieldSet' => __DIR__ . '/..' . '/favr/core/src/Fields/FieldSet.php',
         'FavrMembers\\Vendor\\FavrCore\\Fields\\Sanitizer' => __DIR__ . '/..' . '/favr/core/src/Fields/Sanitizer.php',
+        'FavrMembers\\Vendor\\FavrCore\\Moderation\\PendingChanges' => __DIR__ . '/..' . '/favr/core/src/Moderation/PendingChanges.php',
+        'FavrMembers\\Vendor\\FavrCore\\Moderation\\Uploads' => __DIR__ . '/..' . '/favr/core/src/Moderation/Uploads.php',
         'FavrMembers\\Vendor\\FavrCore\\Support\\AssetVersion' => __DIR__ . '/..' . '/favr/core/src/Support/AssetVersion.php',
         'FavrMembers\\Vendor\\FavrCore\\Support\\CsvFormat' => __DIR__ . '/..' . '/favr/core/src/Support/CsvFormat.php',
         'FavrMembers\\Vendor\\FavrCore\\Support\\Hours' => __DIR__ . '/..' . '/favr/core/src/Support/Hours.php',
+        'FavrMembers\\Vendor\\FavrCore\\Support\\RateLimit' => __DIR__ . '/..' . '/favr/core/src/Support/RateLimit.php',
         'FavrMembers\\Vendor\\FavrCore\\Support\\Template' => __DIR__ . '/..' . '/favr/core/src/Support/Template.php',
     );
 

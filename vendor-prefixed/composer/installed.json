@@ -2,17 +2,17 @@
     "packages": [
         {
             "name": "favr/core",
-            "version": "v0.1.0",
-            "version_normalized": "0.1.0.0",
+            "version": "v0.2.6",
+            "version_normalized": "0.2.6.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/26am/favr-core.git",
-                "reference": "0ea3376fe1c1a702c89837315b55520a16416116"
+                "reference": "ccfb2a66198725b56e21941c8137e5763287ce83"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/26am/favr-core/zipball/0ea3376fe1c1a702c89837315b55520a16416116",
-                "reference": "0ea3376fe1c1a702c89837315b55520a16416116",
+                "url": "https://api.github.com/repos/26am/favr-core/zipball/ccfb2a66198725b56e21941c8137e5763287ce83",
+                "reference": "ccfb2a66198725b56e21941c8137e5763287ce83",
                 "shasum": ""
             },
             "require": {
@@ -23,7 +23,7 @@
                 "phpunit/phpunit": "^9.6",
                 "wp-coding-standards/wpcs": "^3.1"
             },
-            "time": "2026-09-23T13:09:06+00:00",
+            "time": "2026-09-23T14:14:52+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -49,7 +49,7 @@
             ],
             "description": "Shared building blocks for Favr Sites plugins: declarative fields, sanitizing, admin field UI, templates.",
             "support": {
-                "source": "https://github.com/26am/favr-core/tree/v0.1.0",
+                "source": "https://github.com/26am/favr-core/tree/v0.2.6",
                 "issues": "https://github.com/26am/favr-core/issues"
             },
             "install-path": "../favr/core"

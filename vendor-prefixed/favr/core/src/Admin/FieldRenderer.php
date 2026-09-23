@@ -25,12 +25,23 @@ final class FieldRenderer {
 	private string $input_name;
 
 	/**
+	 * Front-end upload config (null in wp-admin, where the media library is used):
+	 * { endpoint: REST URL, nonce: wp_rest nonce, parent: post id }.
+	 *
+	 * @var array<string, mixed>|null
+	 */
+	private ?array $upload;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param string $input_name Top-level input name for posted values.
+	 * @param string                    $input_name Top-level input name for posted values.
+	 * @param array<string, mixed>|null $upload     Front-end mode: image/gallery fields upload
+	 *                                              through this endpoint instead of wp.media.
 	 */
-	public function __construct( string $input_name = 'favr' ) {
+	public function __construct( string $input_name = 'favr', ?array $upload = null ) {
 		$this->input_name = $input_name;
+		$this->upload     = $upload;
 	}
 
 	/** The top-level input name. */
@@ -177,6 +188,57 @@ final class FieldRenderer {
 	}
 
 	/**
+	 * Time input.
+	 *
+	 * @param array<string, mixed> $field Field.
+	 * @param mixed                $value Value.
+	 * @param string               $id    DOM id.
+	 */
+	private function inputTime( array $field, $value, string $id ): void {
+		$this->inputText( $field, $value, $id, 'time' );
+	}
+
+	/**
+	 * Front-end uploader (members have no media library access).
+	 *
+	 * @param array<string, mixed> $field    Field.
+	 * @param list<int>            $ids      Current attachment ids.
+	 * @param string               $id       DOM id.
+	 * @param bool                 $multiple Gallery (true) or single image.
+	 */
+	private function uploader( array $field, array $ids, string $id, bool $multiple ): void {
+		printf(
+			'<div class="favr-upload%1$s" id="%2$s" data-endpoint="%3$s" data-nonce="%4$s" data-parent="%5$d" data-multiple="%6$s" data-error="%7$s"><input type="hidden" name="%8$s" value="%9$s"><ul class="favr-upload__list">',
+			$multiple ? ' favr-upload--multiple' : '',
+			esc_attr( $id ),
+			esc_url( (string) $this->upload['endpoint'] ),
+			esc_attr( (string) $this->upload['nonce'] ),
+			(int) ( $this->upload['parent'] ?? 0 ),
+			$multiple ? '1' : '0',
+			esc_attr__( 'That file could not be uploaded. Use a JPG, PNG, WebP or GIF image under the size limit.', 'favr-core' ),
+			esc_attr( $this->name( (string) $field['id'] ) ),
+			esc_attr( implode( ',', $ids ) )
+		);
+		foreach ( $ids as $attachment ) {
+			$src = wp_get_attachment_image_url( $attachment, 'thumbnail' );
+			if ( $src ) {
+				printf(
+					'<li class="favr-upload__item" data-id="%1$d" draggable="%4$s"><img src="%2$s" alt=""><button type="button" class="favr-upload__remove" aria-label="%3$s">&times;</button></li>',
+					(int) $attachment,
+					esc_url( $src ),
+					esc_attr__( 'Remove image', 'favr-core' ),
+					$multiple ? 'true' : 'false'
+				);
+			}
+		}
+		printf(
+			'</ul><label class="favr-upload__drop"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif"%1$s><span>%2$s</span></label><p class="favr-upload__status" role="status" aria-live="polite"></p></div>',
+			$multiple ? ' multiple' : '',
+			esc_html( $multiple ? __( 'Add photos (drag to reorder)', 'favr-core' ) : __( 'Choose an image', 'favr-core' ) )
+		);
+	}
+
+	/**
 	 * Textarea.
 	 *
 	 * @param array<string, mixed> $field Field.
@@ -292,6 +354,10 @@ final class FieldRenderer {
 	 * @param string               $id    DOM id.
 	 */
 	private function inputImage( array $field, $value, string $id ): void {
+		if ( null !== $this->upload ) {
+			$this->uploader( $field, (int) $value > 0 ? array( (int) $value ) : array(), $id, false );
+			return;
+		}
 		$attachment = (int) $value;
 		$src        = $attachment ? wp_get_attachment_image_url( $attachment, 'medium' ) : '';
 		printf(
@@ -321,6 +387,10 @@ final class FieldRenderer {
 	 * @param string               $id    DOM id.
 	 */
 	private function inputGallery( array $field, $value, string $id ): void {
+		if ( null !== $this->upload ) {
+			$this->uploader( $field, is_array( $value ) ? array_map( 'intval', $value ) : array(), $id, true );
+			return;
+		}
 		$ids = is_array( $value ) ? array_map( 'intval', $value ) : array();
 		printf(
 			'<div class="favr-gallery" id="%1$s"><input type="hidden" name="%2$s" value="%3$s"><ul class="favr-gallery__list">',

@@ -1,0 +1,192 @@
+/* Favr Core — front-end skin for the field UI. Load after fields.css; scope with .favr-front.
+   Inherits the theme's font and text colour so forms sit naturally inside any theme. */
+
+.favr-front {
+	--favr-admin-accent: var(--wp--preset--color--primary, var(--favr-accent, #2271b1));
+	--favr-admin-border: color-mix(in srgb, currentColor 18%, transparent);
+	--favr-admin-muted: color-mix(in srgb, currentColor 65%, transparent);
+	--favr-admin-bg: color-mix(in srgb, currentColor 4%, transparent);
+	--favr-admin-radius: 8px;
+	font: inherit;
+	color: inherit;
+}
+
+.favr-front .favr-panel {
+	background: transparent;
+	border: 1px solid var(--favr-admin-border);
+	border-radius: var(--favr-admin-radius);
+	box-shadow: none;
+	overflow: hidden;
+	min-height: 0;
+}
+
+.favr-front .favr-tabs { background: var(--favr-admin-bg); }
+
+.favr-front .favr-tab {
+	font: inherit;
+	color: inherit;
+}
+
+.favr-front input[type=text],
+.favr-front input[type=email],
+.favr-front input[type=url],
+.favr-front input[type=tel],
+.favr-front input[type=number],
+.favr-front input[type=date],
+.favr-front input[type=time],
+.favr-front select,
+.favr-front textarea {
+	font: inherit;
+	color: inherit;
+	background: transparent;
+	border: 1px solid var(--favr-admin-border);
+	border-radius: 6px;
+	padding: .5em .7em;
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	min-height: 2.6em;
+}
+
+.favr-front input:focus,
+.favr-front select:focus,
+.favr-front textarea:focus {
+	outline: 2px solid var(--favr-admin-accent);
+	outline-offset: 1px;
+	border-color: transparent;
+}
+
+.favr-front .button {
+	font: inherit;
+	display: inline-flex;
+	align-items: center;
+	gap: .35em;
+	padding: .45em .9em;
+	border: 1px solid var(--favr-admin-border);
+	border-radius: 6px;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+}
+
+.favr-front .button-primary,
+.favr-front button[type=submit] {
+	background: var(--favr-admin-accent);
+	border-color: var(--favr-admin-accent);
+	color: #fff;
+}
+
+.favr-front .dashicons { width: 1.1em; height: 1.1em; font-size: 1.1em; }
+
+.favr-front .favr-review-note {
+	display: inline-block;
+	margin-top: .3em;
+	font-size: .85em;
+	color: var(--favr-admin-muted);
+}
+
+.favr-front .favr-review-note::before { content: "⏳ "; }
+
+.favr-front .favr-pending {
+	display: block;
+	margin-top: .35em;
+	padding: .35em .6em;
+	font-size: .85em;
+	background: color-mix(in srgb, #dba617 14%, transparent);
+	border-radius: 4px;
+}
+
+/* ------------------------------------------------------------ Uploader */
+
+.favr-upload {
+	border: 1px dashed var(--favr-admin-border);
+	border-radius: var(--favr-admin-radius);
+	padding: 12px;
+	transition: background .15s;
+}
+
+.favr-upload.is-over { background: var(--favr-admin-bg); border-color: var(--favr-admin-accent); }
+
+.favr-upload.is-busy { opacity: .7; }
+
+.favr-upload__list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0 0 8px;
+	padding: 0;
+	list-style: none;
+}
+
+.favr-upload__list:empty { margin: 0; }
+
+.favr-upload__item {
+	position: relative;
+	width: 96px;
+	height: 96px;
+	border-radius: 6px;
+	overflow: hidden;
+	background: var(--favr-admin-bg);
+}
+
+.favr-upload--multiple .favr-upload__item { cursor: grab; }
+
+.favr-upload__item.is-dragging { opacity: .4; }
+
+.favr-upload__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.favr-upload__remove {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(0, 0, 0, .65);
+	color: #fff;
+	font-size: 16px;
+	line-height: 24px;
+	cursor: pointer;
+}
+
+.favr-upload__drop {
+	display: inline-flex;
+	align-items: center;
+	gap: .4em;
+	cursor: pointer;
+	color: var(--favr-admin-accent);
+	font-weight: 600;
+}
+
+.favr-upload__drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.favr-upload__drop:focus-within { outline: 2px solid var(--favr-admin-accent); outline-offset: 2px; }
+
+.favr-upload__status:empty { display: none; }
+
+.favr-upload__status { margin: 6px 0 0; font-size: .9em; color: #b32d2e; }
+
+.favr-front .favr-input-affix input { padding-left: 2.4em !important; }
+
+.favr-front .favr-input-affix .dashicons { left: .7em; }
+
+/* Stack the tabs above the fields whenever the form itself is narrow (theme content columns
+   are often ~600px even on desktop), not just on small screens. */
+.favr-front { container-type: inline-size; }
+
+@container (max-width: 760px) {
+	.favr-front .favr-panel { grid-template-columns: 1fr; }
+	.favr-front .favr-tabs { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px; padding: 8px; border-right: 0; border-bottom: 1px solid var(--favr-admin-border); }
+	.favr-front .favr-tab { width: auto !important; flex: 0 0 auto; border-left: 0; border-radius: 999px; padding: 6px 12px; }
+	.favr-front .favr-tab.is-active,
+	.favr-front .favr-tab.is-active .dashicons { background: var(--favr-admin-accent); color: #fff; }
+	.favr-front .favr-grid .favr-w-half,
+	.favr-front .favr-grid .favr-w-third { grid-column: 1 / -1; }
+}
+
+@media (max-width: 782px) {
+	.favr-front .favr-panel { grid-template-columns: 1fr; }
+	.favr-front .favr-tabs { display: flex; overflow-x: auto; }
+}
