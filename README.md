@@ -73,6 +73,18 @@ With Favr Directory or Favr Events active, staff get one **Approvals** screen. M
 the applicant and, for businesses, creates the listing. Declining marks the application inactive
 and emails the note.
 
+## Page builders
+
+- **Blocks:** Member Login, Member Account, Membership Application and Members Only, plus a
+  *Members only* toggle in the page sidebar.
+- **Elementor** (when active): Member Login, Member Account and Membership Application widgets;
+  **Favr Members: Visibility** (Advanced tab) on every section, container and widget: show to
+  everyone, current members, non-members, logged-in or logged-out visitors (e.g. a members-only
+  resources section next to a "Join us" section for everyone else); and a **Members only** switch
+  in each page's Elementor settings. Hidden elements are never rendered, and Elementor's element
+  cache is bypassed for them.
+- Shortcodes remain: `[favr_login]`, `[favr_account]`, `[favr_register]`, `[favr_members_only]`.
+
 ## For developers
 
 ```php
