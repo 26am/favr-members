@@ -21,6 +21,11 @@ Favr Events).
   capped change log (`_favr_change_log`). The owning plugin applies approved values.
 - `FavrCore\Approvals\Inbox`: one shared **Approvals** admin screen. Call `Inbox::boot()` and add
   queues through the `favr_approvals_providers` filter (see the class docblock for the shape).
+  Give items a `version` fingerprint so `decide()` can refuse stale decisions, and a cheap `count`
+  callable for the menu badge.
+- `FieldRenderer::panel()`: the shared tabbed panel (tabs + panes) used by every edit screen and
+  front-end form.
+- `FavrCore\Support\RateLimit::hit( $key, $max, $window )`: simple per-key limits for member forms.
 
 ## How plugins consume it
 

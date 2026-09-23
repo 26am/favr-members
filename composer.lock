@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7aa263cd0d18e9a21179538ee8a4a8fa",
+    "content-hash": "d1884984202d0dd445c64ff21cb9f043",
     "packages": [
         {
             "name": "favr/core",
-            "version": "v0.2.8",
+            "version": "v0.3.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/26am/favr-core.git",
-                "reference": "0818b49185ff20f79a5e2e6028a4241f56105096"
+                "url": "git@github.com:26am/favr-core.git",
+                "reference": "25e7ef69c6ea859ce4bc14f97d44596453efa788"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/26am/favr-core/zipball/0818b49185ff20f79a5e2e6028a4241f56105096",
-                "reference": "0818b49185ff20f79a5e2e6028a4241f56105096",
+                "url": "https://api.github.com/repos/26am/favr-core/zipball/25e7ef69c6ea859ce4bc14f97d44596453efa788",
+                "reference": "25e7ef69c6ea859ce4bc14f97d44596453efa788",
                 "shasum": ""
             },
             "require": {
@@ -51,11 +51,7 @@
                 "GPL-2.0-or-later"
             ],
             "description": "Shared building blocks for Favr Sites plugins: declarative fields, sanitizing, admin field UI, templates.",
-            "support": {
-                "source": "https://github.com/26am/favr-core/tree/v0.2.8",
-                "issues": "https://github.com/26am/favr-core/issues"
-            },
-            "time": "2026-09-23T14:24:45+00:00"
+            "time": "2026-09-23T14:48:59+00:00"
         }
     ],
     "packages-dev": [

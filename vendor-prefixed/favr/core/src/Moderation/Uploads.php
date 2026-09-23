@@ -13,8 +13,14 @@ namespace FavrMembers\Vendor\FavrCore\Moderation;
  * Images only, size-limited, owned by the uploader. Plugins expose this through their own
  * REST route (with their own permission check) and must validate submitted attachment ids with
  * `usable()` before saving them, so nobody can attach someone else's media.
+ *
+ * Uploads start **private** (not in the public media REST API or attachment pages) and are made
+ * public with `publish()` when the content using them goes live. `cleanup()` removes private
+ * uploads nobody used.
  */
 final class Uploads {
+
+	public const META = '_favr_upload';
 
 	public const MIMES = array(
 		'jpg|jpeg|jpe' => 'image/jpeg',
@@ -74,7 +80,7 @@ final class Uploads {
 			array(
 				'post_mime_type' => $moved['type'],
 				'post_title'     => sanitize_text_field( pathinfo( (string) $file['name'], PATHINFO_FILENAME ) ),
-				'post_status'    => 'inherit',
+				'post_status'    => 'private',
 				'post_author'    => $user_id,
 			),
 			$moved['file'],
@@ -86,7 +92,62 @@ final class Uploads {
 			return $attachment;
 		}
 		wp_update_attachment_metadata( (int) $attachment, wp_generate_attachment_metadata( (int) $attachment, $moved['file'] ) );
+		update_post_meta( (int) $attachment, self::META, time() );
 		return (int) $attachment;
+	}
+
+	/**
+	 * Make uploads public (and attach orphans to a post) once the content using them is live.
+	 *
+	 * @param list<int> $ids     Attachment ids.
+	 * @param int       $post_id Post they now belong to (0 to leave the parent alone).
+	 */
+	public static function publish( array $ids, int $post_id = 0 ): void {
+		foreach ( array_unique( array_filter( array_map( 'intval', $ids ) ) ) as $id ) {
+			$post = get_post( $id );
+			if ( ! $post || 'attachment' !== $post->post_type || ! get_post_meta( $id, self::META, true ) ) {
+				continue; // Only ever touch files that came through handle().
+			}
+			$update = array( 'ID' => $id );
+			if ( 'private' === $post->post_status ) {
+				$update['post_status'] = 'inherit';
+			}
+			if ( $post_id && ! $post->post_parent ) {
+				$update['post_parent'] = $post_id;
+			}
+			if ( count( $update ) > 1 ) {
+				wp_update_post( $update );
+			}
+		}
+	}
+
+	/**
+	 * Delete private uploads older than $days (abandoned forms, suggestions never approved).
+	 *
+	 * @param int $days Age in days.
+	 * @return int Number deleted.
+	 */
+	public static function cleanup( int $days = 30 ): int {
+		$ids = get_posts(
+			array(
+				'post_type'      => 'attachment',
+				'post_status'    => 'private',
+				'posts_per_page' => 200, // phpcs:ignore WordPress.WP.PostsPerPage.posts_per_page_posts_per_page -- batch per cron run.
+				'fields'         => 'ids',
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- daily cron.
+					array(
+						'key'     => self::META,
+						'value'   => time() - $days * DAY_IN_SECONDS,
+						'compare' => '<',
+						'type'    => 'NUMERIC',
+					),
+				),
+			)
+		);
+		foreach ( $ids as $id ) {
+			wp_delete_attachment( (int) $id, true );
+		}
+		return count( $ids );
 	}
 
 	/**

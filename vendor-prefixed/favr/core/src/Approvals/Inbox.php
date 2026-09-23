@@ -11,8 +11,9 @@ namespace FavrMembers\Vendor\FavrCore\Approvals;
 
 /**
  * Plugins contribute queues with the `favr_approvals_providers` filter (a plain WordPress
- * hook, so it works across each plugin's namespace-prefixed copy of this library). The first
- * plugin to boot registers the screen; later copies do nothing.
+ * hook, so it works across each plugin's namespace-prefixed copy of this library). Every copy
+ * that boots becomes a candidate; on `plugins_loaded` the newest copy registers the screen, so
+ * one plugin shipping an older favr/core can never downgrade the inbox for the others.
  *
  * Provider shape (array):
  *  - id          string   Unique id.
@@ -33,14 +34,40 @@ final class Inbox {
 
 	public const PAGE = 'favr-approvals';
 
-	/** Register the screen once per request, whichever plugin gets here first. */
+	/** Bump whenever the inbox's behaviour or provider contract changes. */
+	public const VERSION = '0.3.0';
+
+	/** Offer this copy as the inbox; the newest copy wins on plugins_loaded. */
 	public static function boot(): void {
-		if ( ! empty( $GLOBALS['favr_approvals_inbox_booted'] ) ) {
+		$candidates = isset( $GLOBALS['favr_approvals_inbox_candidates'] ) && is_array( $GLOBALS['favr_approvals_inbox_candidates'] ) ? $GLOBALS['favr_approvals_inbox_candidates'] : array();
+		if ( isset( $candidates[ self::class ] ) ) {
 			return;
 		}
+		$candidates[ self::class ]                  = self::VERSION;
+		$GLOBALS['favr_approvals_inbox_candidates'] = $candidates;
+		// Copies from before this protocol check this flag; setting it keeps them out of the way.
 		$GLOBALS['favr_approvals_inbox_booted'] = true;
-		add_action( 'admin_menu', array( self::class, 'menu' ) );
-		add_action( 'admin_post_favr_approval', array( self::class, 'handle' ) );
+		if ( did_action( 'plugins_loaded' ) ) {
+			self::elect();
+		} else {
+			add_action( 'plugins_loaded', array( self::class, 'elect' ), 0 );
+		}
+	}
+
+	/** Pick the newest candidate (once) and let it register the screen. */
+	public static function elect(): void {
+		if ( ! empty( $GLOBALS['favr_approvals_inbox_elected'] ) ) {
+			return;
+		}
+		$candidates = (array) ( $GLOBALS['favr_approvals_inbox_candidates'] ?? array() );
+		uasort( $candidates, static fn( $a, $b ): int => version_compare( (string) $b, (string) $a ) );
+		$winner = (string) array_key_first( $candidates );
+		if ( '' === $winner || ! class_exists( $winner ) ) {
+			return;
+		}
+		$GLOBALS['favr_approvals_inbox_elected'] = $winner;
+		add_action( 'admin_menu', array( $winner, 'menu' ) );
+		add_action( 'admin_post_favr_approval', array( $winner, 'handle' ) );
 	}
 
 	/**
