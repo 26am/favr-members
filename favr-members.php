@@ -3,7 +3,7 @@
  * Plugin Name:       Favr Members
  * Plugin URI:        https://github.com/26am/favr-members
  * Description:       Member records (individual or business), member logins and a member dashboard for Chambers of Commerce and associations. Part of Favr Sites.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 6.7
  * Requires PHP:      8.1
  * Author:            Favr Sites
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'FAVR_MEMBERS_VERSION', '1.0.0' );
+define( 'FAVR_MEMBERS_VERSION', '1.1.0' );
 define( 'FAVR_MEMBERS_FILE', __FILE__ );
 define( 'FAVR_MEMBERS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'FAVR_MEMBERS_URL', plugin_dir_url( __FILE__ ) );

@@ -43,6 +43,7 @@ final class Plugin {
 		( new Integration\Directory() )->hook();
 		( new Integration\DirectoryEditing() )->hook();
 		( new Integration\Elementor() )->hook();
+		( new Integration\FavrSites() )->hook();
 
 		( new Frontend\Auth() )->hook();
 		( new Frontend\Pages() )->hook();
