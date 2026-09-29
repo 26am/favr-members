@@ -105,7 +105,7 @@ final class FavrSites {
 				$items[] = array(
 					'title' => $member->name(),
 					/* translators: %s: renewal date. */
-					'meta'  => sprintf( __( 'renews %s', 'favr-members' ), wp_date( 'M j', (int) strtotime( $member->text( 'renewal_date' ) ) ) ),
+					'meta'  => sprintf( __( 'renews %s', 'favr-members' ), self::renewalDay( $member->text( 'renewal_date' ) ) ),
 					'url'   => (string) get_edit_post_link( (int) $id, 'raw' ),
 				);
 			}
@@ -127,5 +127,15 @@ final class FavrSites {
 				'url'   => admin_url( 'post-new.php?post_type=' . ID::POST_TYPE ),
 			),
 		);
+	}
+
+	/**
+	 * A stored Y-m-d renewal date as a short day label ("Oct 5").
+	 *
+	 * @param string $date Y-m-d.
+	 */
+	public static function renewalDay( string $date ): string {
+		// Read the date in the site's timezone; strtotime() would use UTC midnight and show the day before in the Americas.
+		return wp_date( 'M j', ( new \DateTimeImmutable( $date, wp_timezone() ) )->getTimestamp() );
 	}
 }
