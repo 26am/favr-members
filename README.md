@@ -59,7 +59,7 @@ The edit screen only shows the fields for the chosen type, so individual members
 - Staff always see everything, with a note on the page that visitors do not, and "Members only"
   next to the title in the Pages and Posts lists.
 - The log-in, account and join pages (and Favr Payments' pay page) can never be members-only.
-- A template saved from a members-only page in Elementor is members-only as well.
+- A template saved from a page in Elementor is members-only whenever that page is.
 
 ## With Favr Directory
 

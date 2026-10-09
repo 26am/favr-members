@@ -115,4 +115,44 @@ final class ElementorVisibilityTest extends TestCase {
 		$this->assertFalse( Elementor::isElementorRoute( '/favr/elementor' ) );
 		$this->assertFalse( Elementor::isElementorRoute( '' ) );
 	}
+
+	public function test_what_an_elementor_address_is_asked_to_render(): void {
+		$this->assertSame(
+			array(
+				'post'     => 1120,
+				'elements' => array( 'abc1234' ),
+			),
+			Elementor::askedFor( array( 'post_id' => '1120', 'element_id' => 'abc1234' ) )
+		);
+		// Elementor reads the page's number without its sign, so the guard must as well.
+		$this->assertSame( 1120, Elementor::askedFor( array( 'post_id' => '-1120' ) )['post'] );
+		$this->assertSame( 1120, Elementor::askedFor( array( 'post_id' => '-1120.0' ) )['post'] );
+		$this->assertSame( 1120, Elementor::askedFor( array( 'post_id' => '1120abc' ) )['post'] );
+		$this->assertSame( 1, Elementor::askedFor( array( 'post_id' => array( '1120' ) ) )['post'], 'A list reads as 1, as it does for Elementor.' );
+		$this->assertSame( 0, Elementor::askedFor( array() )['post'] );
+		// Some routes render "element_id", others "widget_id": whatever is named gets checked.
+		$this->assertSame( array( 'bogus', 'real123' ), Elementor::askedFor( array( 'post_id' => 5, 'element_id' => 'bogus', 'widget_id' => 'real123' ) )['elements'] );
+		$this->assertSame( array( 'real123' ), Elementor::askedFor( array( 'post_id' => 5, 'element_id' => array( 'x' ), 'widget_id' => 'real123' ) )['elements'] );
+		$this->assertSame( array(), Elementor::askedFor( array( 'post_id' => 5, 'element_id' => '' ) )['elements'] );
+	}
+
+	public function test_what_an_editing_session_last_did_is_remembered_with_the_page(): void {
+		$this->assertSame( array( 'aaa' => 'on' ), Elementor::remember( array(), 'aaa', true ) );
+		$this->assertSame( array( 'aaa' => 'off' ), Elementor::remember( array( 'aaa' => 'on' ), 'aaa', false ) );
+		$this->assertTrue( Elementor::recall( array( 'aaa' => 'on' ), 'aaa' ) );
+		$this->assertFalse( Elementor::recall( array( 'aaa' => 'off' ), 'aaa' ) );
+		$this->assertNull( Elementor::recall( array( 'aaa' => 'on' ), 'bbb' ) );
+		$this->assertNull( Elementor::recall( 'junk', 'aaa' ) );
+		$this->assertNull( Elementor::recall( array( 'aaa' => 'on' ), '' ) );
+		// Only the last few sessions are kept, newest last.
+		$many = array();
+		foreach ( range( 1, 12 ) as $n ) {
+			$many = Elementor::remember( $many, 't' . $n, true );
+		}
+		$this->assertSame( 10, count( $many ) );
+		$this->assertNull( Elementor::recall( $many, 't1' ) );
+		$this->assertTrue( Elementor::recall( $many, 't12' ) );
+		$this->assertSame( array( 'aaa' => 'on' ), Elementor::remember( 'junk', 'aaa', true ) );
+		$this->assertSame( array(), Elementor::remember( array(), '', true ), 'No session token: nothing to remember it by.' );
+	}
 }

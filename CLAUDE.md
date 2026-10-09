@@ -17,7 +17,7 @@ composer lint      # WPCS, keep at 0 errors
 ```
 
 `wp eval-file tests/integration/gating.php` checks members-only pages and posts through every way
-a post's text is handed out (about 235 checks, including whole pages fetched over HTTP, an
+a post's text is handed out (about 250 checks, including whole pages fetched over HTTP, an
 Elementor page and an Elementor Pro Loop Grid). It makes its own posts and people and removes
 them, so it can run on any local site. Run it after any change to `Restrict` or `Elementor`.
 Not covered by it: page caches that serve logged-in users, Elementor's alpha Markdown
@@ -83,17 +83,33 @@ Local test site: `http://sermonator-test.local/`, with this repo symlinked to
   settings; `after_save` also fires for autosaves. So:
   - the switch and a hidden companion (`favr_members_only_was`: "how it stood when the editor
     opened|session token") both default to empty with `save_default`, and `documentConfig()`
-    fills them in when the editor opens;
+    fills them in whenever the editor loads the page;
   - a save changes the flag only when the switch differs from how it stood, or from what this
-    editing session last did (`change()`, a transient per session token). A reset switch, a tab
-    left open, or a save by a tool that does not mention the switch changes nothing;
-  - `documentSaving()` strips both from what the page stores; an autosave of a published page
-    keeps the switch as the person's unpublished change, and `documentConfig()` shows it again.
-  - A template saved from a members-only page gets the flag (`templateSaved()`): the template
-    library is readable by visitors through its feed and search.
+    editing session last did (`change()`; the last few sessions are remembered in post meta
+    `_favr_members_switch`, not in a transient, so a cleared cache cannot lose it). A reset
+    switch, a tab left open, or a tool's save that does not mention the switch changes nothing;
+  - `documentSaving()` strips both from everything Elementor stores, with one exception: an
+    autosave of a published page keeps the switch **when the person changed it**, as their
+    unpublished change, and `documentConfig()` shows it again. Never keep a value there that
+    `change()` does not call a change: Elementor autosaves by itself after a revision is
+    applied and a minute after any edit, and a reset or stale switch kept in the autosave
+    comes back looking deliberate;
+  - the flag is set on `elementor/document/before_save` (after Elementor's permission check,
+    before the text and status are stored), so a page first published with the switch on is
+    never announced as published while still public.
+  - Accepted wrinkle: after a revision has been shown, the panel shows the switch off although
+    the page is still protected, until the editor reloads (a Site Settings round trip does).
+  - Copies: a template saved from a page records the page (`_favr_members_copy_of`,
+    `templateSaved()`) and from then on carries the page's switch: `Restrict::copiesFollow()`
+    keeps copies in step whenever the page's flag is set or removed, and a copy keeps its
+    state when the page is deleted. The template library is readable by visitors through its
+    feed and search, and anyone who can write posts may export a template
+    (`guardTemplateExport()`). An exported file imported again is a new, unprotected template.
   - Elementor Pro's render-one-element REST routes (posts-widget, refresh-loop, refresh-search)
-    skip every page-view check: `guardRenderRoute()` covers any Elementor route asked for a page
-    and one of its elements, whatever the letter case of the address.
+    skip every page-view check. `guardRenderRoute()` covers any Elementor route that names a
+    page, and reads the request the way Elementor does (`askedFor()`): the page number without
+    its sign, and **every** element named (`element_id` and `widget_id`), whatever the letter
+    case of the address. Each of those was a real bypass.
   Decide by the document being rendered (`buildingId()`), never `get_the_ID()`: header, footer
   and loop templates render on every page.
 - **Shared code:** import from `FavrMembers\Vendor\FavrCore\…`. Never edit `vendor-prefixed/`; change

@@ -96,6 +96,11 @@ final class Restrict {
 		add_filter( 'display_post_states', array( $this, 'postState' ), 10, 2 );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'editorAssets' ) );
 		add_action( 'favr_members_member_saved', array( self::class, 'forget' ) );
+
+		add_action( 'added_post_meta', array( $this, 'switchChanged' ), 10, 4 );
+		add_action( 'updated_post_meta', array( $this, 'switchChanged' ), 10, 4 );
+		add_action( 'deleted_post_meta', array( $this, 'switchRemoved' ), 10, 3 );
+		add_action( 'before_delete_post', array( $this, 'deleting' ) );
 	}
 
 	/** Block + page meta. */
@@ -138,6 +143,72 @@ final class Restrict {
 			\FavrMembers\Vendor\FavrCore\Support\AssetVersion::of( FAVR_MEMBERS_PATH . 'assets/blocks/editor.js', FAVR_MEMBERS_VERSION ),
 			true
 		);
+	}
+
+	/**
+	 * Pages being deleted right now: their copies keep the switch as it was.
+	 *
+	 * @var list<int>
+	 */
+	private static array $going = array();
+
+	/**
+	 * A page's switch was set: its copies (Elementor templates saved from it) follow.
+	 *
+	 * @param mixed $meta_id Meta row.
+	 * @param mixed $post_id Post.
+	 * @param mixed $key     Meta key.
+	 * @param mixed $value   New value.
+	 */
+	public function switchChanged( $meta_id, $post_id = 0, $key = '', $value = '' ): void {
+		if ( ID::PAGE_META_GATED === $key ) {
+			self::copiesFollow( (int) $post_id, self::flagged( $value ) );
+		}
+	}
+
+	/**
+	 * A page's switch was removed: its copies follow, unless the page itself is being deleted.
+	 *
+	 * @param mixed $meta_ids Meta rows.
+	 * @param mixed $post_id  Post.
+	 * @param mixed $key      Meta key.
+	 */
+	public function switchRemoved( $meta_ids, $post_id = 0, $key = '' ): void {
+		if ( ID::PAGE_META_GATED === $key && ! in_array( (int) $post_id, self::$going, true ) ) {
+			self::copiesFollow( (int) $post_id, false );
+		}
+	}
+
+	/**
+	 * A post is about to be deleted for good.
+	 *
+	 * @param mixed $post_id Post.
+	 */
+	public function deleting( $post_id ): void {
+		self::$going[] = (int) $post_id;
+	}
+
+	/**
+	 * Give a page's copies the page's switch.
+	 *
+	 * @param int  $post_id The page.
+	 * @param bool $on      Its switch.
+	 */
+	private static function copiesFollow( int $post_id, bool $on ): void {
+		global $wpdb;
+		// A copy's own switch does not travel any further.
+		if ( $post_id <= 0 || get_post_meta( $post_id, ID::PAGE_META_COPY, true ) ) {
+			return;
+		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a handful of rows, read once when a switch changes.
+		$copies = $wpdb->get_col( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s", ID::PAGE_META_COPY, (string) $post_id ) );
+		foreach ( $copies as $copy ) {
+			if ( $on ) {
+				update_post_meta( (int) $copy, ID::PAGE_META_GATED, true );
+			} else {
+				delete_post_meta( (int) $copy, ID::PAGE_META_GATED );
+			}
+		}
 	}
 
 	/**

@@ -21,7 +21,7 @@ use FavrMembers\Vendor\FavrCore\Integrations\Elementor\Widget;
  * - "Members only" in each page's Elementor settings. The switch has one home, the page flag the
  *   block editor toggle uses. Elementor is shown its state when the editor opens, the page never
  *   stores a copy that could go stale, and a save changes the flag only when the person at that
- *   editor changed the switch (see documentSaved()).
+ *   editor changed the switch (see change()).
  * Everything runs on Elementor's hooks; without Elementor none of it loads.
  */
 final class Elementor {
@@ -37,11 +37,14 @@ final class Elementor {
 	/** Where Elementor keeps a document's page settings. */
 	private const PAGE_SETTINGS = '_elementor_page_settings';
 
+	/** How many editing sessions' last action on the switch are remembered with a page. */
+	private const SESSIONS_KEPT = 10;
+
 	/**
-	 * What a save in progress says about the switch: document => [ on or off, how it stood when
-	 * the editor opened (null when not said), the editing session's token ].
+	 * What a save in progress does to the switch: document => [ on or off, the editing
+	 * session's token ]. Only saves that change it are in here.
 	 *
-	 * @var \WeakMap<object, array{0: bool, 1: bool|null, 2: string}>|null
+	 * @var \WeakMap<object, array{0: bool, 1: string}>|null
 	 */
 	private ?\WeakMap $switched = null;
 
@@ -77,7 +80,9 @@ final class Elementor {
 		add_filter( 'elementor/document/config', array( $this, 'documentConfig' ), 10, 2 );
 		add_action( 'elementor/template-library/after_save_template', array( $this, 'templateSaved' ), 10, 2 );
 		add_filter( 'elementor/document/save/data', array( $this, 'documentSaving' ), 10, 2 );
-		add_action( 'elementor/document/after_save', array( $this, 'documentSaved' ), 10, 2 );
+		add_action( 'elementor/document/before_save', array( $this, 'documentSaved' ) );
+		add_action( 'wp_ajax_elementor_library_direct_actions', array( $this, 'guardTemplateExport' ), 0 );
+		add_filter( 'handle_bulk_actions-edit-elementor_library', array( $this, 'guardTemplateBulkExport' ), 1, 3 );
 	}
 
 	/**
@@ -221,12 +226,35 @@ final class Elementor {
 	}
 
 	/**
+	 * Which page and which of its elements a request names, read the way Elementor reads them.
+	 * Elementor drops the sign of the page's number, so "-12" is page 12 to it. Some of its
+	 * routes render "element_id" and others "widget_id": every element named is returned, so
+	 * that naming a harmless one cannot stand in for the one that gets rendered.
+	 *
+	 * @param array<string, mixed> $params Request parameters.
+	 * @return array{post: int, elements: list<string>}
+	 */
+	public static function askedFor( array $params ): array {
+		$raw      = $params['post_id'] ?? 0;
+		$elements = array();
+		foreach ( array( 'element_id', 'widget_id' ) as $name ) {
+			if ( isset( $params[ $name ] ) && is_scalar( $params[ $name ] ) && '' !== (string) $params[ $name ] ) {
+				$elements[] = (string) $params[ $name ];
+			}
+		}
+		return array(
+			'post'     => is_scalar( $raw ) ? abs( (int) $raw ) : ( is_array( $raw ) && $raw ? 1 : 0 ),
+			'elements' => $elements,
+		);
+	}
+
+	/**
 	 * Elementor Pro renders one element of a page for anyone who asks for it by id (its
 	 * "posts-widget", "refresh-loop" and "refresh-search" routes, used by load-more buttons and
-	 * filters). Refuse any such request for a page the visitor may not read, for an element (or
-	 * a section around it) the visitor may not see, and for a page that is not published.
-	 * Decided by what the request asks for (a page and one of its elements), not by the route's
-	 * name, so a route Elementor adds later is covered too.
+	 * filters), skipping every check a page view makes. So for any Elementor route that names a
+	 * page: refuse when the visitor may not read that page, when the page is not published, and
+	 * when an element it names (or a section around it) is not shown to this visitor. Decided
+	 * by what the request names, not by the route, so a route Elementor adds later is covered.
 	 *
 	 * @param mixed            $response Response so far.
 	 * @param mixed            $handler  Route handler.
@@ -237,22 +265,22 @@ final class Elementor {
 		if ( is_wp_error( $response ) || ! $request instanceof \WP_REST_Request || ! self::isElementorRoute( (string) $request->get_route() ) ) {
 			return $response;
 		}
-		$post_id = (int) $request->get_param( 'post_id' );
-		$element = $request->get_param( 'element_id' );
-		$element = is_scalar( $element ) && '' !== (string) $element ? (string) $element : $request->get_param( 'widget_id' );
-		$element = is_scalar( $element ) ? (string) $element : '';
+		$asked   = self::askedFor( (array) $request->get_params() );
+		$post_id = $asked['post'];
 		$post    = $post_id ? get_post( $post_id ) : null;
-		if ( ! $post || '' === $element ) {
+		if ( ! $post ) {
 			return $response;
 		}
 		$refuse = Restrict::isGated( $post_id ) || ( ! is_post_publicly_viewable( $post ) && ! current_user_can( 'edit_post', $post_id ) );
-		if ( ! $refuse && class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->documents ) ) {
+		if ( ! $refuse && $asked['elements'] && class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->documents ) ) {
 			$document = \Elementor\Plugin::$instance->documents->get( $post_id );
-			$modes    = $document && method_exists( $document, 'get_elements_data' ) ? self::pathModes( (array) $document->get_elements_data(), $element ) : null;
-			foreach ( (array) $modes as $mode ) {
-				if ( ! self::visible( (string) $mode, is_user_logged_in(), Restrict::canView( $post_id ) ) ) {
-					$refuse = true;
-					break;
+			$data     = $document && method_exists( $document, 'get_elements_data' ) ? (array) $document->get_elements_data() : array();
+			foreach ( $asked['elements'] as $element ) {
+				foreach ( (array) self::pathModes( $data, $element ) as $mode ) {
+					if ( ! self::visible( (string) $mode, is_user_logged_in(), Restrict::canView( $post_id ) ) ) {
+						$refuse = true;
+						break 2;
+					}
 				}
 			}
 		}
@@ -462,9 +490,45 @@ final class Elementor {
 	}
 
 	/**
-	 * A page is being saved: take what belongs to the switch out of what Elementor is about to
-	 * store, and remember what it said until the save has gone through. An autosave of a
-	 * published page keeps the switch itself, as the person's unpublished change.
+	 * What an editing session last did to the switch (null: nothing, or not known).
+	 *
+	 * @param mixed  $sessions What is remembered with the page (token => on|off).
+	 * @param string $token    The session's token.
+	 */
+	public static function recall( $sessions, string $token ): ?bool {
+		if ( '' === $token || ! is_array( $sessions ) || ! isset( $sessions[ $token ] ) || ! in_array( $sessions[ $token ], array( 'on', 'off' ), true ) ) {
+			return null;
+		}
+		return 'on' === $sessions[ $token ];
+	}
+
+	/**
+	 * Remember what an editing session did to the switch, keeping the last few sessions.
+	 *
+	 * @param mixed  $sessions What is remembered with the page so far.
+	 * @param string $token    The session's token.
+	 * @param bool   $on       What it did.
+	 * @return array<string, string>
+	 */
+	public static function remember( $sessions, string $token, bool $on ): array {
+		$sessions = is_array( $sessions ) ? $sessions : array();
+		if ( '' === $token ) {
+			return $sessions;
+		}
+		unset( $sessions[ $token ] );
+		$sessions[ $token ] = $on ? 'on' : 'off';
+		return array_slice( $sessions, -self::SESSIONS_KEPT, null, true );
+	}
+
+	/**
+	 * A page is being saved. Work out whether the person changed the switch (see change()),
+	 * take what belongs to the switch out of what Elementor is about to store, and remember a
+	 * change until Elementor has let the save through.
+	 *
+	 * An autosave of a published page is where Elementor keeps a person's unpublished changes:
+	 * it keeps the switch too, but only when the person changed it. A switch that Elementor
+	 * reset by itself, or that a tab left open still shows the old way, is no change and is
+	 * not kept, or it would come back later looking like one.
 	 *
 	 * @param mixed  $data     Data being saved.
 	 * @param object $document Document.
@@ -478,19 +542,26 @@ final class Elementor {
 		unset( $this->switched[ $document ] );
 		$says = self::switchIn( $data['settings'] );
 		$was  = self::baseline( $data['settings'][ self::PAGE_SWITCH_WAS ] ?? null );
-		unset( $data['settings'][ self::PAGE_SWITCH_WAS ] );
-		if ( ! self::hasSwitch( $document ) || self::isThePage( $document ) ) {
-			unset( $data['settings'][ self::PAGE_SWITCH ] );
+		unset( $data['settings'][ self::PAGE_SWITCH ], $data['settings'][ self::PAGE_SWITCH_WAS ] );
+		if ( null === $says || ! self::hasSwitch( $document ) ) {
+			return $data;
 		}
-		if ( null !== $says && self::hasSwitch( $document ) ) {
-			$this->switched[ $document ] = array( $says, $was[0], $was[1] );
+		$change = self::change( $says, $was[0], self::recall( get_post_meta( (int) $document->get_main_id(), ID::PAGE_META_SESS, true ), $was[1] ) );
+		if ( null === $change ) {
+			return $data;
+		}
+		if ( self::isThePage( $document ) ) {
+			$this->switched[ $document ] = array( $change, $was[1] );
+		} else {
+			$data['settings'][ self::PAGE_SWITCH ] = $change ? '1' : '';
 		}
 		return $data;
 	}
 
 	/**
-	 * A save went through. If it was the page itself that was saved and the person changed the
-	 * switch (see change()), set the page flag.
+	 * Elementor has checked that the person may save and is about to: if they changed the
+	 * switch, set the page flag now, before the page's text and status are stored, so that a
+	 * page first published with the switch on is never public for a moment.
 	 *
 	 * @param object $document Document.
 	 */
@@ -498,7 +569,7 @@ final class Elementor {
 		if ( ! is_object( $document ) || ! $this->switched || ! isset( $this->switched[ $document ] ) ) {
 			return;
 		}
-		list( $says, $was, $token ) = $this->switched[ $document ];
+		list( $change, $token ) = $this->switched[ $document ];
 		unset( $this->switched[ $document ] );
 		if ( ! self::isThePage( $document ) ) {
 			return;
@@ -507,33 +578,71 @@ final class Elementor {
 		if ( ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
-		$session = '' !== $token ? get_transient( ID::SWITCH_SESSION . $token ) : false;
-		$change  = self::change( $says, $was, in_array( $session, array( 'on', 'off' ), true ) ? 'on' === $session : null );
-		if ( null === $change ) {
-			return;
-		}
 		if ( $change ) {
 			update_post_meta( $post_id, ID::PAGE_META_GATED, true );
 		} else {
 			delete_post_meta( $post_id, ID::PAGE_META_GATED );
 		}
 		if ( '' !== $token ) {
-			set_transient( ID::SWITCH_SESSION . $token, $change ? 'on' : 'off', DAY_IN_SECONDS );
+			update_post_meta( $post_id, ID::PAGE_META_SESS, self::remember( get_post_meta( $post_id, ID::PAGE_META_SESS, true ), $token, $change ) );
 		}
 	}
 
 	/**
 	 * "Save as template" copies a page's text into Elementor's template library, which visitors
-	 * can list and search. A copy of a members-only page is members-only too.
+	 * can list and search. The copy is told which page it was saved from, and from then on is
+	 * as members-only as that page (Restrict keeps copies in step when the page's switch changes).
 	 *
 	 * @param mixed $template_id   The new template.
 	 * @param mixed $template_data What it was saved from.
 	 */
 	public function templateSaved( $template_id, $template_data = array() ): void {
-		$from = is_array( $template_data ) && isset( $template_data['post_id'] ) ? (int) $template_data['post_id'] : 0;
-		if ( (int) $template_id > 0 && $from > 0 && Restrict::isMembersOnly( $from ) ) {
-			update_post_meta( (int) $template_id, ID::PAGE_META_GATED, true );
+		$template_id = (int) $template_id;
+		$from        = is_array( $template_data ) && isset( $template_data['post_id'] ) ? (int) $template_data['post_id'] : 0;
+		if ( $template_id <= 0 || $from <= 0 || $from === $template_id ) {
+			return;
 		}
+		$parent = wp_is_post_revision( $from );
+		$from   = $parent ? (int) $parent : $from;
+		// A copy of a copy belongs to the page the first copy was made from.
+		$origin = (int) get_post_meta( $from, ID::PAGE_META_COPY, true );
+		update_post_meta( $template_id, ID::PAGE_META_COPY, $origin > 0 ? $origin : $from );
+		if ( Restrict::flagged( get_post_meta( $from, ID::PAGE_META_GATED, true ) ) ) {
+			update_post_meta( $template_id, ID::PAGE_META_GATED, true );
+		}
+	}
+
+	/**
+	 * Elementor lets anyone who can write posts export any saved template as a file. Not a
+	 * members-only one, for someone who may not read it.
+	 */
+	public function guardTemplateExport(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- only ever refuses; Elementor checks the nonce before it does anything.
+		$action = isset( $_REQUEST['library_action'] ) ? sanitize_key( wp_unslash( $_REQUEST['library_action'] ) ) : '';
+		$id     = isset( $_REQUEST['template_id'] ) ? absint( wp_unslash( $_REQUEST['template_id'] ) ) : 0;
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+		if ( 'export_template' === $action && $id && Restrict::isGated( $id ) ) {
+			wp_die( esc_html__( 'This content is for members.', 'favr-members' ), '', array( 'response' => 403 ) );
+		}
+	}
+
+	/**
+	 * The same for "Export" in the Templates list's bulk actions.
+	 *
+	 * @param mixed $redirect Where to go afterwards.
+	 * @param mixed $action   The bulk action.
+	 * @param mixed $post_ids Templates ticked.
+	 * @return mixed
+	 */
+	public function guardTemplateBulkExport( $redirect, $action = '', $post_ids = array() ) {
+		if ( is_string( $action ) && false !== strpos( $action, 'export' ) ) {
+			foreach ( (array) $post_ids as $id ) {
+				if ( Restrict::isGated( (int) $id ) ) {
+					wp_die( esc_html__( 'This content is for members.', 'favr-members' ), '', array( 'response' => 403 ) );
+				}
+			}
+		}
+		return $redirect;
 	}
 
 	/** In the Elementor editor or its preview (show everything so it can be edited). */

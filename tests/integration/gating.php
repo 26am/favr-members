@@ -198,6 +198,45 @@ if ( $built && defined( 'ELEMENTOR_PRO_VERSION' ) ) {
 		}
 	);
 }
+// The same Loop Grid on a public page, inside a container shown to current members only.
+$ruled = 0;
+if ( $grid ) {
+	$ruled = $post( array( 'post_type' => 'page', 'post_title' => 'Gating news list for members inside a public page', 'post_content' => '' ), false );
+	update_post_meta( $ruled, '_elementor_edit_mode', 'builder' );
+	$as(
+		$owner,
+		static function () use ( $ruled, $card, $cat ): void {
+			\Elementor\Plugin::$instance->documents->get( $ruled, false )->save(
+				array(
+					'elements' => array(
+						array(
+							'id'       => 'gtg3001',
+							'elType'   => 'container',
+							'settings' => array( 'favr_members_visibility' => 'members' ),
+							'isInner'  => false,
+							'elements' => array(
+								array(
+									'id'         => 'gtg3002',
+									'elType'     => 'widget',
+									'widgetType' => 'loop-grid',
+									'settings'   => array(
+										'template_id'                 => $card,
+										'posts_per_page'              => 10,
+										'post_query_post_type'        => 'post',
+										'post_query_include'          => array( 'terms' ),
+										'post_query_include_term_ids' => array( (string) get_term( $cat )->term_taxonomy_id ),
+									),
+									'elements'   => array(),
+								),
+							),
+						),
+					),
+					'settings' => array(),
+				)
+			);
+		}
+	);
+}
 $secrets = array( $mark( 'body' ), $mark( 'excerpt' ), $mark( 'autobody' ), $mark( 'page' ), $mark( 'comment' ), $mark( 'built' ) );
 
 // --- Ways a post's text is handed out ------------------------------------------------------------
@@ -583,8 +622,19 @@ if ( 200 !== $home['code'] || false === strpos( $home['body'], $mark( 'publicbod
 		$got = $post_json( rest_url( 'ELEMENTOR-PRO/V1/Refresh-Loop' ), array( 'post_id' => $grid, 'widget_id' => 'gtg2002', 'widget_filters' => (object) array() ) );
 		$check( 'and refused when the address is typed in capitals', in_array( $got['code'], array( 401, 403 ), true ) && false === strpos( $got['body'], 'Gating members post' ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 160 ) );
 		delete_post_meta( $grid, ID::PAGE_META_GATED );
+		$loop_route = rest_url( 'elementor-pro/v1/refresh-loop' );
+		$got = $post_json( $loop_route, array( 'post_id' => $ruled, 'widget_id' => 'gtg3002', 'widget_filters' => (object) array() ) );
+		$check( 'a Loop Grid inside a members-only section of a public page is not re-rendered for a visitor', in_array( $got['code'], array( 401, 403 ), true ) && false === strpos( $got['body'], 'Gating' ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 120 ) );
+		$got = $post_json( $loop_route, array( 'post_id' => $ruled, 'widget_id' => 'gtg3002', 'element_id' => 'zzzzzzz', 'widget_filters' => (object) array() ) );
+		$check( 'nor when the request names a second, made-up element to be checked instead', in_array( $got['code'], array( 401, 403 ), true ) && false === strpos( $got['body'], 'Gating' ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 120 ) );
+		$got = $post_json( $loop_route, array( 'post_id' => $grid, 'widget_id' => 'gtg2002', 'element_id' => 'zzzzzzz', 'widget_filters' => (object) array() ) );
+		$check( 'while an ordinary public Loop Grid is still re-rendered whatever else the request names', 200 === $got['code'] && false !== strpos( $got['body'], 'Gating' ), 'http ' . $got['code'] );
 	}
 	if ( $built && defined( 'ELEMENTOR_PRO_VERSION' ) ) {
+		foreach ( array( '-' . $built, '-' . $built . '.0', $built . 'abc' ) as $spelled ) {
+			$got = $fetch( add_query_arg( array( 'post_id' => rawurlencode( $spelled ), 'element_id' => 'gtg0002' ), rest_url( 'elementor-pro/v1/posts-widget' ) ) );
+			$check( 'Elementor Pro\'s render-one-element address refuses a members-only page however its number is written (' . $spelled . ')', array() === $leaks( $got['body'] ) && 200 !== $got['code'], 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 120 ) );
+		}
 		foreach ( array( 'elementor-pro/v1/Posts-Widget', 'ELEMENTOR-PRO/V1/posts-widget' ) as $spelling ) {
 			$got = $fetch( add_query_arg( array( 'post_id' => $built, 'element_id' => 'gtg0002' ), rest_url( $spelling ) ) );
 			$check( 'Elementor Pro\'s render-one-element address refuses a members-only page however it is spelled (' . $spelling . ')', array() === $leaks( $got['body'] ) && in_array( $got['code'], array( 401, 403 ), true ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 120 ) );
@@ -664,6 +714,69 @@ if ( $built ) {
 	$save( array( 'post_status' => 'publish', 'favr_members_only' => '1', 'favr_members_only_was' => (string) ( $pending['favr_members_only_was'] ?? '' ) ) );
 	$check( 'and publishing then makes the page members-only', $is() );
 	$kept = get_post_meta( $built, '_elementor_page_settings', true );
+	// What the editor is told when the person comes back to the page (their autosave, if newer).
+	$comes_back = static function () use ( $as, $owner, $built ): array {
+		return (array) $as(
+			$owner,
+			static function () use ( $built ): array {
+				$document = \Elementor\Plugin::$instance->documents->get( $built, false );
+				$autosave = $document->get_newer_autosave();
+				do_action( 'elementor/document/before_get_config', $autosave ? $autosave : $document );
+				return (array) ( ( (array) apply_filters( 'elementor/document/config', array(), $built ) )['settings']['settings'] ?? array() );
+			}
+		);
+	};
+	$older = static function () use ( $built ): void {
+		$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->posts, array( 'post_modified' => gmdate( 'Y-m-d H:i:s', time() - 300 ), 'post_modified_gmt' => gmdate( 'Y-m-d H:i:s', time() - 300 ) ), array( 'ID' => $built ) ); // phpcs:ignore WordPress.DB
+		clean_post_cache( $built );
+	};
+	// Elementor autosaves by itself after a revision is applied, and a minute after any edit.
+	$older();
+	$save( array( 'post_status' => 'autosave', 'favr_members_only' => '', 'favr_members_only_was' => '' ), true );
+	$back = $comes_back();
+	$check( 'a switch that Elementor reset (a revision was shown) and then autosaved is not taken for the person\'s change: back in the editor it shows on', $is() && '1' === ( $back['favr_members_only'] ?? null ), wp_json_encode( $back ) );
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => (string) ( $back['favr_members_only'] ?? '' ), 'favr_members_only_was' => (string) ( $back['favr_members_only_was'] ?? '' ) ) );
+	$check( 'and publishing from there leaves the page members-only', $is() );
+	delete_post_meta( $built, ID::PAGE_META_GATED );
+	$stale = $opened();
+	update_post_meta( $built, ID::PAGE_META_GATED, true );
+	$older();
+	$save( array( 'post_status' => 'autosave', 'favr_members_only' => '', 'favr_members_only_was' => $stale ), true );
+	$back = $comes_back();
+	$check( 'nor is the switch of a tab that was open before the page was made members-only elsewhere, once that tab autosaves', $is() && '1' === ( $back['favr_members_only'] ?? null ), wp_json_encode( $back ) );
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => (string) ( $back['favr_members_only'] ?? '' ), 'favr_members_only_was' => (string) ( $back['favr_members_only_was'] ?? '' ) ) );
+	$check( 'and publishing from there leaves the page members-only too', $is() );
+	// What a session last did must outlive a cleared cache: it is kept with the page.
+	$was = $opened();
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '', 'favr_members_only_was' => $was ) );
+	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\_transient%favr\_members\_switch%'" ); // phpcs:ignore WordPress.DB
+	wp_cache_flush();
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '1', 'favr_members_only_was' => $was ) );
+	$check( 'off then on in one session works even after the site\'s caches and transients were cleared in between', $is() );
+	// Publishing a new page with the switch on: anything that reacts to "published" must already find it members-only.
+	$fresh = $post( array( 'post_type' => 'page', 'post_status' => 'draft', 'post_title' => 'Gating page published with the switch on', 'post_content' => '' ), false );
+	update_post_meta( $fresh, '_elementor_edit_mode', 'builder' );
+	$seen_at_publish = null;
+	$watch           = static function ( $new, $old, $changed ) use ( $fresh, &$seen_at_publish ): void {
+		if ( 'publish' === $new && $changed instanceof WP_Post && (int) $changed->ID === $fresh && null === $seen_at_publish ) {
+			$seen_at_publish = \FavrMembers\Frontend\Restrict::isMembersOnly( $fresh );
+		}
+	};
+	add_action( 'transition_post_status', $watch, 1, 3 );
+	$as(
+		$owner,
+		static function () use ( $fresh ): void {
+			$was = (string) ( ( (array) apply_filters( 'elementor/document/config', array(), $fresh ) )['settings']['settings']['favr_members_only_was'] ?? '' );
+			\Elementor\Plugin::$instance->documents->get( $fresh, false )->save(
+				array(
+					'elements' => array( array( 'id' => 'gtg4001', 'elType' => 'container', 'settings' => array(), 'isInner' => false, 'elements' => array() ) ),
+					'settings' => array( 'post_status' => 'publish', 'favr_members_only' => '1', 'favr_members_only_was' => $was ),
+				)
+			);
+		}
+	);
+	remove_action( 'transition_post_status', $watch, 1 );
+	$check( 'a page first published with the switch on is already members-only at the moment WordPress announces it as published', true === $seen_at_publish && \FavrMembers\Frontend\Restrict::isMembersOnly( $fresh ) && 'publish' === get_post_status( $fresh ), wp_json_encode( $seen_at_publish ) );
 	$check( 'the page itself never stores the switch or how it stood', ! is_array( $kept ) || ( ! array_key_exists( 'favr_members_only', $kept ) && ! array_key_exists( 'favr_members_only_was', $kept ) ), wp_json_encode( $kept ) );
 	// "Save as template" copies the page's text into Elementor's template library.
 	$template = static function ( int $from ) use ( $as, $owner, &$made ): int {
@@ -680,12 +793,64 @@ if ( $built ) {
 		}
 		return $id;
 	};
+	$only           = static fn( int $id ): bool => \FavrMembers\Frontend\Restrict::isMembersOnly( $id );
 	$copy_of_hidden = $template( $built );
-	$check( 'a template saved from a members-only page is members-only too', $copy_of_hidden > 0 && \FavrMembers\Frontend\Restrict::isMembersOnly( $copy_of_hidden ), 'template ' . $copy_of_hidden );
+	$check( 'a template saved from a members-only page is members-only too', $copy_of_hidden > 0 && $only( $copy_of_hidden ), 'template ' . $copy_of_hidden );
 	if ( $grid ) {
 		$copy_of_public = $template( $grid );
-		$check( 'a template saved from a public page is not', $copy_of_public > 0 && ! \FavrMembers\Frontend\Restrict::isMembersOnly( $copy_of_public ) );
+		$check( 'a template saved from a public page is not', $copy_of_public > 0 && ! $only( $copy_of_public ) );
+		update_post_meta( $grid, ID::PAGE_META_GATED, true );
+		$check( 'until that page is made members-only: its copies follow it', $only( $copy_of_public ) );
+		delete_post_meta( $grid, ID::PAGE_META_GATED );
+		$check( 'and stop being members-only when the page does', ! $only( $copy_of_public ) );
 	}
+	// A page that is deleted while members-only leaves its copies members-only.
+	$doomed = $post( array( 'post_type' => 'page', 'post_title' => 'Gating members page to be deleted', 'post_content' => '' ), true );
+	update_post_meta( $doomed, '_elementor_edit_mode', 'builder' );
+	$as(
+		$owner,
+		static function () use ( $doomed, $mark ): void {
+			\Elementor\Plugin::$instance->documents->get( $doomed, false )->save( array( 'elements' => array( array( 'id' => 'gtg5001', 'elType' => 'container', 'settings' => array(), 'isInner' => false, 'elements' => array( array( 'id' => 'gtg5002', 'elType' => 'widget', 'widgetType' => 'text-editor', 'settings' => array( 'editor' => '<p>Doomed ' . $mark( 'doomed' ) . '.</p>' ), 'elements' => array() ) ) ) ), 'settings' => array() ) );
+		}
+	);
+	$orphan = $template( $doomed );
+	wp_delete_post( $doomed, true );
+	$check( 'a template whose members-only page has been deleted stays members-only', $orphan > 0 && $only( $orphan ) );
+	// Elementor lets anyone who can write posts export any saved template as a file.
+	$died = '';
+	$dies = static fn() => static function ( $message ): void {
+		throw new \RuntimeException( is_scalar( $message ) ? (string) $message : 'died' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+	};
+	add_filter( 'wp_die_handler', $dies );
+	add_filter( 'wp_die_ajax_handler', $dies );
+	$kept_request = $_REQUEST; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$_REQUEST     = array( 'action' => 'elementor_library_direct_actions', 'library_action' => 'export_template', 'source' => 'local', 'template_id' => (string) $copy_of_hidden ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$as(
+		$people['an author of other posts'],
+		static function () use ( &$died ): void {
+			try {
+				( new \FavrMembers\Integration\Elementor() )->guardTemplateExport();
+			} catch ( \RuntimeException $e ) {
+				$died = $e->getMessage();
+			}
+		}
+	);
+	$check( 'an Author who is not a member cannot export a members-only template to read it', '' !== $died, $died );
+	$died = '';
+	$as(
+		$owner,
+		static function () use ( &$died ): void {
+			try {
+				( new \FavrMembers\Integration\Elementor() )->guardTemplateExport();
+			} catch ( \RuntimeException $e ) {
+				$died = $e->getMessage();
+			}
+		}
+	);
+	$check( 'staff who may read it can', '' === $died, $died );
+	$_REQUEST = $kept_request; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	remove_filter( 'wp_die_handler', $dies );
+	remove_filter( 'wp_die_ajax_handler', $dies );
 	$library = wp_remote_get( add_query_arg( array( 'feed' => 'rss2', 'post_type' => 'elementor_library' ), home_url( '/' ) ), array( 'timeout' => 45 ) );
 	$library = is_wp_error( $library ) ? '' : (string) wp_remote_retrieve_body( $library );
 	$check( 'so the template library\'s feed does not hand out the hidden text', false !== strpos( $library, 'Gating saved template' ) && false === strpos( $library, $mark( 'built' ) ), false === strpos( $library, 'Gating saved template' ) ? 'the feed does not list the template at all' : 'leaked' );

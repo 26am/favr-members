@@ -29,6 +29,9 @@ if ( is_array( $favr_settings ) && '1' === (string) ( $favr_settings['delete_dat
 			wp_delete_post( (int) $favr_settings[ $favr_key ], true );
 		}
 	}
+	foreach ( array( '_favr_members_only', '_favr_members_copy_of', '_favr_members_switch' ) as $favr_key ) {
+		delete_post_meta_by_key( $favr_key );
+	}
 	delete_option( 'favr_members_settings' );
 	delete_option( 'favr_members_version' );
 
