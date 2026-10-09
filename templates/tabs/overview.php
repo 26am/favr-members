@@ -54,7 +54,19 @@ $favr_format = (string) get_option( 'date_format' );
 			<?php if ( ID::STATUS_PENDING === $favr_member->status() ) : ?>
 				<p class="favr-m-hint"><?php esc_html_e( 'Your application is being reviewed. We’ll email you when it’s approved.', 'favr-members' ); ?></p>
 			<?php elseif ( ID::STATUS_LAPSED === $favr_member->status() ) : ?>
-				<p class="favr-m-hint"><?php esc_html_e( 'This membership has lapsed. Please contact us to renew.', 'favr-members' ); ?></p>
+				<?php
+				/**
+				 * Filter the hint shown on a lapsed membership ('' to show nothing, e.g. when
+				 * another plugin offers a "Renew now" button).
+				 *
+				 * @param string                   $hint   Hint.
+				 * @param FavrMembers\Model\Member $member Member.
+				 */
+				$favr_hint = (string) apply_filters( 'favr_members_lapsed_hint', __( 'This membership has lapsed. Please contact us to renew.', 'favr-members' ), $favr_member );
+				?>
+				<?php if ( '' !== $favr_hint ) : ?>
+					<p class="favr-m-hint"><?php echo esc_html( $favr_hint ); ?></p>
+				<?php endif; ?>
 			<?php endif; ?>
 			<?php if ( $favr_listing && 'publish' === get_post_status( $favr_listing ) ) : ?>
 				<p><a href="<?php echo esc_url( (string) get_permalink( $favr_listing ) ); ?>"><?php esc_html_e( 'View your directory listing →', 'favr-members' ); ?></a></p>

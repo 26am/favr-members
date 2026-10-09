@@ -258,6 +258,16 @@ final class Auth {
 		if ( ! is_email( $email ) ) {
 			self::fail( 'register', __( 'Please enter a valid email address.', 'favr-members' ) );
 		}
+		/**
+		 * Filter extra problems with a membership application (for fields other plugins add to
+		 * the form with `favr_members_register_fields`).
+		 *
+		 * @param list<string> $problems Messages to show the applicant.
+		 * @param string       $type     individual | business.
+		 */
+		foreach ( (array) apply_filters( 'favr_members_register_errors', array(), $type ) as $problem ) {
+			self::fail( 'register', (string) $problem );
+		}
 		if ( self::errors( 'register' ) ) {
 			return;
 		}
@@ -303,6 +313,13 @@ final class Auth {
 		$member = Member::find( (int) $member_id );
 		if ( $member ) {
 			$member->addUser( $user_id );
+			/**
+			 * A membership application was just received (before the save hook and the emails).
+			 *
+			 * @param Member $member  The new, pending member record.
+			 * @param int    $user_id The applicant's new login.
+			 */
+			do_action( 'favr_members_application', $member, $user_id );
 			/** This action is documented in src/Admin/EditScreen.php */
 			do_action( 'favr_members_member_saved', $member, 'registration' );
 		}
@@ -333,7 +350,16 @@ final class Auth {
 			)
 		);
 
-		$this->done( Settings::pageUrl( 'register_page' ), 'check_email' );
+		/**
+		 * Filter where an applicant lands after applying (same site only). Favr Payments sends
+		 * them to pay their dues when the association takes payment with the application.
+		 *
+		 * @param string      $url    The join page with its "check your email" message.
+		 * @param Member|null $member The new member record.
+		 */
+		$target = (string) apply_filters( 'favr_members_application_redirect', add_query_arg( 'favr_msg', 'check_email', Settings::pageUrl( 'register_page' ) ), $member );
+		wp_safe_redirect( $target );
+		exit;
 	}
 
 	/** Update the logged-in person's profile (and their individual membership contact details). */

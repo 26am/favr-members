@@ -11,6 +11,7 @@ namespace FavrMembers\Admin;
 
 use FavrMembers\Model\Accounts;
 use FavrMembers\Model\Member;
+use FavrMembers\Model\Membership;
 use FavrMembers\Schema\Identifiers as ID;
 
 /**
@@ -80,6 +81,13 @@ final class ApplicationsQueue {
 			if ( $member->userIds() && ! $verified ) {
 				$details .= '<p class="description">' . esc_html__( 'The applicant hasn’t confirmed their email address yet. You can still approve; they’ll set a password from the link they were sent.', 'favr-members' ) . '</p>';
 			}
+			/**
+			 * Filter the details shown for an application in Approvals (HTML).
+			 *
+			 * @param string $details Details.
+			 * @param Member $member  Applicant's member record.
+			 */
+			$details = (string) apply_filters( 'favr_members_application_details', $details, $member );
 			$items[] = array(
 				'id'       => $member->id(),
 				'title'    => $member->name(),
@@ -111,38 +119,39 @@ final class ApplicationsQueue {
 		}
 
 		if ( 'approve' === $decision ) {
-			update_post_meta( $member_id, ID::meta( 'status' ), ID::STATUS_ACTIVE );
-			if ( '' === $member->text( 'member_since' ) ) {
-				update_post_meta( $member_id, ID::meta( 'member_since' ), wp_date( 'Y-m-d' ) );
+			$status = Membership::approve( $member );
+			if ( ID::STATUS_ACTIVE !== $status ) {
+				return sprintf(
+					/* translators: 1: member name, 2: status label, e.g. "Awaiting payment". */
+					__( 'Approved %1$s. Status: %2$s.', 'favr-members' ),
+					$member->name(),
+					ID::statuses()[ $status ] ?? $status
+				);
 			}
-			foreach ( $member->userIds() as $user_id ) {
-				Accounts::sendApproval( $user_id, $member->name() );
-			}
-		} else {
-			update_post_meta( $member_id, ID::meta( 'status' ), ID::STATUS_INACTIVE );
-			foreach ( $member->userIds() as $user_id ) {
-				$user = get_userdata( $user_id );
-				if ( $user ) {
-					Accounts::mail(
-						$user->user_email,
-						/* translators: %s: site name. */
-						sprintf( __( 'About your membership application at %s', 'favr-members' ), wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES ) ),
-						__( 'Thank you for applying. We weren’t able to approve your membership application at this time.', 'favr-members' ) . ( '' !== $note ? "\n\n" . $note : '' )
-					);
-				}
+			/* translators: %s: member name. */
+			return sprintf( __( 'Approved %s. They’ve been emailed.', 'favr-members' ), $member->name() );
+		}
+
+		update_post_meta( $member_id, ID::meta( 'status' ), ID::STATUS_INACTIVE );
+		foreach ( $member->userIds() as $user_id ) {
+			$user = get_userdata( $user_id );
+			if ( $user ) {
+				Accounts::mail(
+					$user->user_email,
+					/* translators: %s: site name. */
+					sprintf( __( 'About your membership application at %s', 'favr-members' ), wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES ) ),
+					__( 'Thank you for applying. We weren’t able to approve your membership application at this time.', 'favr-members' ) . ( '' !== $note ? "\n\n" . $note : '' )
+				);
 			}
 		}
 		wp_cache_delete( 'status_counts', 'favr_members' );
 		$fresh = Member::find( $member_id );
 		if ( $fresh ) {
 			/** This action is documented in src/Admin/EditScreen.php */
-			do_action( 'favr_members_member_saved', $fresh, 'approve' === $decision ? 'approval' : 'rejection' );
+			do_action( 'favr_members_member_saved', $fresh, 'rejection' );
 		}
 
-		return sprintf(
-			/* translators: %s: member name. */
-			'approve' === $decision ? __( 'Approved %s. They’ve been emailed.', 'favr-members' ) : __( 'Declined %s’s application.', 'favr-members' ),
-			$member->name()
-		);
+		/* translators: %s: member name. */
+		return sprintf( __( 'Declined %s’s application.', 'favr-members' ), $member->name() );
 	}
 }

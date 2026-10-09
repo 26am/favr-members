@@ -4,7 +4,7 @@ Tags: members, membership, chamber of commerce, association, member dashboard
 Requires at least: 6.7
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,9 +18,12 @@ Member records (individual or business), member logins and a member dashboard fo
 * Members-only content: a block, a shortcode and a page toggle.
 * Optional automatic lapsing after the renewal date.
 * Works with Favr Directory: business members get a linked listing whose membership details stay in sync.
-* No payments: membership status is managed by staff.
+* Dues, invoices and renewals are added by the separate Favr Payments plugin; without it, membership status is managed by staff.
 
 == Changelog ==
+
+= 1.2.0 =
+* Hooks for Favr Payments: extra member statuses, one shared way to activate a membership, fields on the join form and details in Approvals. No change for sites without Favr Payments.
 
 = 1.1.0 =
 * Members card (active members, renewals in the next 30 days) and "Add member" button on the Favr dashboard (Favr Sites plugin).

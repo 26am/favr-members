@@ -57,16 +57,25 @@ final class Identifiers {
 	}
 
 	/**
-	 * Status labels.
+	 * Status labels. Other plugins may add statuses (Favr Payments adds "Awaiting payment") but
+	 * can never remove or rename the built-in ones. A status this list does not know is treated
+	 * as not a current member.
 	 *
 	 * @return array<string, string>
 	 */
 	public static function statuses(): array {
-		return array(
+		$statuses = array(
 			self::STATUS_ACTIVE   => __( 'Active', 'favr-members' ),
 			self::STATUS_PENDING  => __( 'Pending', 'favr-members' ),
 			self::STATUS_LAPSED   => __( 'Lapsed', 'favr-members' ),
 			self::STATUS_INACTIVE => __( 'Inactive', 'favr-members' ),
 		);
+		/**
+		 * Filter the member statuses.
+		 *
+		 * @param array<string, string> $statuses Status key => label.
+		 */
+		$extra = apply_filters( 'favr_members_statuses', $statuses );
+		return $statuses + array_filter( is_array( $extra ) ? $extra : array(), 'is_string' );
 	}
 }

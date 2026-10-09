@@ -107,6 +107,15 @@ Hooks: `favr_members_member_saved` (member, context), `favr_members_fields`, `fa
 `favr_members_membership_card`, `favr_members_after_tab`, `favr_members_template`,
 `favr_members_loaded`. Templates are overridable from `yourtheme/favr-members/`.
 
+For plugins that add to the membership itself (Favr Payments uses all of these):
+`favr_members_statuses` (add a status; built-in ones cannot be removed),
+`favr_members_approved_status` (what approving an application results in, default `active`),
+`FavrMembers\Model\Membership::activate( $member, $context )` (make a member active exactly the
+way approval does), `favr_members_register_fields` / `favr_members_register_errors` /
+`favr_members_application` / `favr_members_application_redirect` (fields on the join form, their
+validation, the new application, where the applicant lands), `favr_members_application_details`
+(extra details in Approvals) and `favr_members_lapsed_hint`.
+
 WP-CLI: `wp favr-members seed | import <file> [--dry-run] [--send-invites] | export [--file=] | lapse`.
 
 ## Development

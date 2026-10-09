@@ -4,7 +4,9 @@
 
 **Favr Members** (namespace `FavrMembers\`, data prefix `favr_member_`) is part of the Favr Sites
 suite. The suite spec lives in Favr Directory: `docs/specs/2026-09-23-favr-suite.md`. PHP 8.1+,
-WP 6.7+, no payments.
+WP 6.7+. No payments here: dues, invoices and renewals live in Favr Payments, which hooks in
+through `Model\Membership` (the one place a member becomes active), `favr_members_statuses`,
+`favr_members_approved_status` and the `favr_members_register_*` / `favr_members_application*` hooks.
 
 ## Commands
 

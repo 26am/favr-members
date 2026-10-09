@@ -55,6 +55,16 @@ $favr_type = 'business' === $favr_old( 'type' ) ? 'business' : 'individual';
 			</p>
 		</div>
 
+		<?php
+		/**
+		 * Extra fields on the membership application (Favr Payments adds the level choice).
+		 * Validate them with the `favr_members_register_errors` filter.
+		 *
+		 * @param string $type The type currently selected: individual | business.
+		 */
+		do_action( 'favr_members_register_fields', $favr_type );
+		?>
+
 		<p class="favr-m-hp" aria-hidden="true"><label>Website <input type="text" name="favr_website" tabindex="-1" autocomplete="off"></label></p>
 		<input type="hidden" name="favr_members_action" value="register">
 		<?php wp_nonce_field( ID::NONCE_FRONT . '_register', '_favr_members_nonce' ); ?>
