@@ -119,21 +119,61 @@ final class ElementorVisibilityTest extends TestCase {
 	public function test_what_an_elementor_address_is_asked_to_render(): void {
 		$this->assertSame(
 			array(
-				'post'     => 1120,
+				'posts'    => array( 1120 ),
 				'elements' => array( 'abc1234' ),
 			),
-			Elementor::askedFor( array( 'post_id' => '1120', 'element_id' => 'abc1234' ) )
+			Elementor::askedFor( array( array( 'post_id' => '1120', 'element_id' => 'abc1234' ) ) )
 		);
 		// Elementor reads the page's number without its sign, so the guard must as well.
-		$this->assertSame( 1120, Elementor::askedFor( array( 'post_id' => '-1120' ) )['post'] );
-		$this->assertSame( 1120, Elementor::askedFor( array( 'post_id' => '-1120.0' ) )['post'] );
-		$this->assertSame( 1120, Elementor::askedFor( array( 'post_id' => '1120abc' ) )['post'] );
-		$this->assertSame( 1, Elementor::askedFor( array( 'post_id' => array( '1120' ) ) )['post'], 'A list reads as 1, as it does for Elementor.' );
-		$this->assertSame( 0, Elementor::askedFor( array() )['post'] );
+		$this->assertSame( array( 1120 ), Elementor::askedFor( array( array( 'post_id' => '-1120' ) ) )['posts'] );
+		$this->assertSame( array( 1120 ), Elementor::askedFor( array( array( 'post_id' => '-1120.0' ) ) )['posts'] );
+		$this->assertSame( array( 1120 ), Elementor::askedFor( array( array( 'post_id' => '1120abc' ) ) )['posts'] );
+		$this->assertSame( array( 1 ), Elementor::askedFor( array( array( 'post_id' => array( '1120' ) ) ) )['posts'], 'A list reads as 1, as it does for Elementor.' );
+		$this->assertSame( array(), Elementor::askedFor( array( array() ) )['posts'] );
 		// Some routes render "element_id", others "widget_id": whatever is named gets checked.
-		$this->assertSame( array( 'bogus', 'real123' ), Elementor::askedFor( array( 'post_id' => 5, 'element_id' => 'bogus', 'widget_id' => 'real123' ) )['elements'] );
-		$this->assertSame( array( 'real123' ), Elementor::askedFor( array( 'post_id' => 5, 'element_id' => array( 'x' ), 'widget_id' => 'real123' ) )['elements'] );
-		$this->assertSame( array(), Elementor::askedFor( array( 'post_id' => 5, 'element_id' => '' ) )['elements'] );
+		$this->assertSame( array( 'bogus', 'real123' ), Elementor::askedFor( array( array( 'post_id' => 5, 'element_id' => 'bogus', 'widget_id' => 'real123' ) ) )['elements'] );
+		$this->assertSame( array( 'real123' ), Elementor::askedFor( array( array( 'post_id' => 5, 'element_id' => array( 'x' ), 'widget_id' => 'real123' ) ) )['elements'] );
+		$this->assertSame( array(), Elementor::askedFor( array( array( 'post_id' => 5, 'element_id' => '' ) ) )['elements'] );
+		// A request has several parts (address, form, JSON body) and each reader picks its own
+		// winner: a JSON null beats the address for one WordPress accessor and not for the
+		// other. Every page and element named anywhere is returned.
+		$asked = Elementor::askedFor(
+			array(
+				array( 'post_id' => '1123', 'element_id' => 'gt5b001' ),
+				array( 'post_id' => null ),
+				array( 'post_id' => 7, 'widget_id' => 'other12' ),
+				'junk',
+			)
+		);
+		$this->assertSame( array( 1123, 7 ), $asked['posts'] );
+		$this->assertSame( array( 'gt5b001', 'other12' ), $asked['elements'] );
+	}
+
+	public function test_an_element_is_found_the_way_elementor_finds_it_inside_components(): void {
+		// Elementor keeps a component's insides in a document of their own and reaches them
+		// through a filter when it looks an element up. The guard must look the same way.
+		$page  = array(
+			array(
+				'id'       => 'section',
+				'settings' => array( 'favr_members_visibility' => 'members' ),
+				'elements' => array(
+					array(
+						'id'       => 'component',
+						'settings' => array(),
+						'elements' => array(),
+					),
+				),
+			),
+		);
+		$inner = static fn( array $children, array $element ): array => 'component' === $element['id'] ? array(
+			array(
+				'id'       => 'inside',
+				'settings' => array(),
+				'elements' => array(),
+			),
+		) : $children;
+		$this->assertNull( Elementor::pathModes( $page, 'inside' ) );
+		$this->assertSame( array( 'members', '', '' ), Elementor::pathModes( $page, 'inside', $inner ) );
 	}
 
 	public function test_what_an_editing_session_last_did_is_remembered_with_the_page(): void {
@@ -149,9 +189,13 @@ final class ElementorVisibilityTest extends TestCase {
 		foreach ( range( 1, 12 ) as $n ) {
 			$many = Elementor::remember( $many, 't' . $n, true );
 		}
-		$this->assertSame( 10, count( $many ) );
+		$this->assertSame( 12, count( $many ) );
+		foreach ( range( 13, 130 ) as $n ) {
+			$many = Elementor::remember( $many, 't' . $n, true );
+		}
+		$this->assertSame( 100, count( $many ), 'A hundred sessions are remembered: a tab would have to stay open through that many changes to be forgotten.' );
 		$this->assertNull( Elementor::recall( $many, 't1' ) );
-		$this->assertTrue( Elementor::recall( $many, 't12' ) );
+		$this->assertTrue( Elementor::recall( $many, 't130' ) );
 		$this->assertSame( array( 'aaa' => 'on' ), Elementor::remember( 'junk', 'aaa', true ) );
 		$this->assertSame( array(), Elementor::remember( array(), '', true ), 'No session token: nothing to remember it by.' );
 	}

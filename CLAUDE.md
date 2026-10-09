@@ -17,7 +17,7 @@ composer lint      # WPCS, keep at 0 errors
 ```
 
 `wp eval-file tests/integration/gating.php` checks members-only pages and posts through every way
-a post's text is handed out (about 250 checks, including whole pages fetched over HTTP, an
+a post's text is handed out (about 260 checks, including whole pages fetched over HTTP, an
 Elementor page and an Elementor Pro Loop Grid). It makes its own posts and people and removes
 them, so it can run on any local site. Run it after any change to `Restrict` or `Elementor`.
 Not covered by it: page caches that serve logged-in users, Elementor's alpha Markdown
@@ -100,16 +100,24 @@ Local test site: `http://sermonator-test.local/`, with this repo symlinked to
   - Accepted wrinkle: after a revision has been shown, the panel shows the switch off although
     the page is still protected, until the editor reloads (a Site Settings round trip does).
   - Copies: a template saved from a page records the page (`_favr_members_copy_of`,
-    `templateSaved()`) and from then on carries the page's switch: `Restrict::copiesFollow()`
-    keeps copies in step whenever the page's flag is set or removed, and a copy keeps its
-    state when the page is deleted. The template library is readable by visitors through its
-    feed and search, and anyone who can write posts may export a template
-    (`guardTemplateExport()`). An exported file imported again is a new, unprotected template.
+    `templateSaved()`). Which page: the one the editor is on (`editor_post_id` in the request);
+    the save dialog's own `post_id` goes stale when the person moves to another page inside the
+    editor. Protection spreads from a page to all its copies whenever the page's flag is set
+    (`Restrict::copiesFollow()`); it is lifted again only from copies made while the page was
+    public. A copy made while the page was members-only holds members-only text and is marked
+    (`_favr_members_copy_kept`): it stays protected, also when the page is made public or
+    deleted. The template library is readable by visitors through its feed and search, and
+    anyone who can write posts may export a template (`guardTemplateExport()`,
+    `guardTemplateBulkExport()`). An exported file imported again is a new, unprotected template.
   - Elementor Pro's render-one-element REST routes (posts-widget, refresh-loop, refresh-search)
     skip every page-view check. `guardRenderRoute()` covers any Elementor route that names a
-    page, and reads the request the way Elementor does (`askedFor()`): the page number without
-    its sign, and **every** element named (`element_id` and `widget_id`), whatever the letter
-    case of the address. Each of those was a real bypass.
+    page. Four real bypasses shaped it, all differences between how the guard and Elementor
+    read one request: letter case of the address; the page number's sign (Elementor uses
+    `absint`); naming a second element (`element_id` and `widget_id`); and the parts of a
+    request disagreeing (a JSON `null` beats the address for `get_params()` but not for
+    `get_param()`). So `askedFor()` picks no winner: every page and element named in any part
+    of the request is checked, and elements are looked up through Elementor's own
+    `find_element_recursive/inner_elements` filter (components keep their insides elsewhere).
   Decide by the document being rendered (`buildingId()`), never `get_the_ID()`: header, footer
   and loop templates render on every page.
 - **Shared code:** import from `FavrMembers\Vendor\FavrCore\…`. Never edit `vendor-prefixed/`; change

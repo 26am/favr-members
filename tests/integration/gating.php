@@ -639,6 +639,22 @@ if ( 200 !== $home['code'] || false === strpos( $home['body'], $mark( 'publicbod
 			$got = $fetch( add_query_arg( array( 'post_id' => $built, 'element_id' => 'gtg0002' ), rest_url( $spelling ) ) );
 			$check( 'Elementor Pro\'s render-one-element address refuses a members-only page however it is spelled (' . $spelling . ')', array() === $leaks( $got['body'] ) && in_array( $got['code'], array( 401, 403 ), true ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 120 ) );
 		}
+		// The parts of a request can disagree: here the address names the page and the JSON body says "no page".
+		$with_body = static function ( string $method, string $body ) use ( $built ): array {
+			// WordPress's own HTTP functions will not send a body with a GET, so this one uses curl.
+			// phpcs:disable WordPress.WP.AlternativeFunctions
+			$handle = curl_init( add_query_arg( array( 'post_id' => $built, 'element_id' => 'gtg0002' ), rest_url( 'elementor-pro/v1/posts-widget' ) ) );
+			curl_setopt_array( $handle, array( CURLOPT_RETURNTRANSFER => true, CURLOPT_CUSTOMREQUEST => $method, CURLOPT_POSTFIELDS => $body, CURLOPT_HTTPHEADER => array( 'Content-Type: application/json' ), CURLOPT_TIMEOUT => 45 ) );
+			$out  = (string) curl_exec( $handle );
+			$code = (int) curl_getinfo( $handle, CURLINFO_HTTP_CODE );
+			curl_close( $handle );
+			// phpcs:enable WordPress.WP.AlternativeFunctions
+			return array( 'code' => $code, 'body' => $out );
+		};
+		$mixed = $with_body( 'GET', '{"post_id":null}' );
+		$check( 'a request whose address names a members-only page and whose JSON body says "no page" is refused', array() === $leaks( $mixed['body'] ) && in_array( $mixed['code'], array( 401, 403 ), true ), 'http ' . $mixed['code'] . ' ' . substr( $mixed['body'], 0, 120 ) );
+		$mixed = $with_body( 'POST', '{"post_id":null,"element_id":null}' );
+		$check( 'the same sent as a POST leaks nothing', 0 !== $mixed['code'] && array() === $leaks( $mixed['body'] ), 'http ' . $mixed['code'] . ' ' . substr( $mixed['body'], 0, 120 ) );
 		$route = rest_url( 'elementor-pro/v1/posts-widget' );
 		$got   = $fetch( add_query_arg( array( 'post_id' => $built, 'element_id' => 'gtg0002' ), $route ) );
 		$check( 'Elementor Pro\'s render-one-element address refuses a members-only page', array() === $leaks( $got['body'] ) && in_array( $got['code'], array( 401, 403 ), true ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 120 ) );
@@ -848,9 +864,55 @@ if ( $built ) {
 		}
 	);
 	$check( 'staff who may read it can', '' === $died, $died );
+	$died = '';
+	$as(
+		$people['an author of other posts'],
+		static function () use ( &$died, $copy_of_hidden ): void {
+			try {
+				( new \FavrMembers\Integration\Elementor() )->guardTemplateBulkExport( 'edit.php', 'elementor_export_multiple_templates', array( '-' . $copy_of_hidden ) );
+			} catch ( \RuntimeException $e ) {
+				$died = $e->getMessage();
+			}
+		}
+	);
+	$check( 'nor export it from the list by writing its number with a minus sign', '' !== $died, $died );
 	$_REQUEST = $kept_request; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	remove_filter( 'wp_die_handler', $dies );
 	remove_filter( 'wp_die_ajax_handler', $dies );
+	// Elementor's editor can move to another page without reloading; its Save-as-Template dialog
+	// then still names the page it was first opened on, while the request names the page it is on.
+	if ( $grid ) {
+		$kept_request               = $_REQUEST; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$_REQUEST['editor_post_id'] = (string) $built; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$moved = (int) $as(
+			$owner,
+			static function () use ( $built, $grid ) {
+				$elements = \Elementor\Plugin::$instance->documents->get( $built, false )->get_elements_raw_data();
+				$saved    = \Elementor\Plugin::$instance->templates_manager->save_template( array( 'post_id' => $grid, 'source' => 'local', 'content' => wp_json_encode( $elements ), 'type' => 'page', 'title' => 'Gating saved template after moving' ) );
+				return is_array( $saved ) ? (int) ( $saved['template_id'] ?? 0 ) : 0;
+			}
+		);
+		$_REQUEST        = $kept_request; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$made['posts'][] = $moved;
+		$check( 'a template saved after moving to a members-only page inside the editor belongs to that page, not the one the editor was opened on', $moved > 0 && $only( $moved ) && (int) get_post_meta( $moved, ID::PAGE_META_COPY, true ) === $built, 'copy of ' . get_post_meta( $moved, ID::PAGE_META_COPY, true ) );
+	}
+	// A copy made while the page was members-only holds members-only text: it stays protected
+	// when the page is later made public (and perhaps rewritten).
+	delete_post_meta( $built, ID::PAGE_META_GATED );
+	$check( 'a template that was saved while its page was members-only stays members-only when the page is made public', $only( $copy_of_hidden ) );
+	update_post_meta( $built, ID::PAGE_META_GATED, true );
+	// A component keeps its insides in a document of its own; Elementor reaches them through a filter.
+	if ( $ruled ) {
+		$insides = static fn( $children, $element ) => is_array( $element ) && 'gtg3002' === ( $element['id'] ?? '' ) ? array( array( 'id' => 'gtgc001', 'elType' => 'widget', 'settings' => array(), 'elements' => array() ) ) : $children;
+		add_filter( 'elementor/utils/find_element_recursive/inner_elements', $insides, 10, 2 );
+		$request = new WP_REST_Request( 'GET', '/elementor-pro/v1/posts-widget' );
+		$request->set_query_params( array( 'post_id' => (string) $ruled, 'element_id' => 'gtgc001' ) );
+		$answer = $as( 0, static fn() => ( new \FavrMembers\Integration\Elementor() )->guardRenderRoute( null, null, $request ) );
+		$check( 'an element inside a component that sits in a members-only section is refused to a visitor', is_wp_error( $answer ) );
+		$answer = $as( $people['a current member'], static fn() => ( new \FavrMembers\Integration\Elementor() )->guardRenderRoute( null, null, $request ) );
+		$check( 'and allowed to a member', ! is_wp_error( $answer ) );
+		remove_filter( 'elementor/utils/find_element_recursive/inner_elements', $insides, 10 );
+	}
 	$library = wp_remote_get( add_query_arg( array( 'feed' => 'rss2', 'post_type' => 'elementor_library' ), home_url( '/' ) ), array( 'timeout' => 45 ) );
 	$library = is_wp_error( $library ) ? '' : (string) wp_remote_retrieve_body( $library );
 	$check( 'so the template library\'s feed does not hand out the hidden text', false !== strpos( $library, 'Gating saved template' ) && false === strpos( $library, $mark( 'built' ) ), false === strpos( $library, 'Gating saved template' ) ? 'the feed does not list the template at all' : 'leaked' );

@@ -38,7 +38,7 @@ final class Elementor {
 	private const PAGE_SETTINGS = '_elementor_page_settings';
 
 	/** How many editing sessions' last action on the switch are remembered with a page. */
-	private const SESSIONS_KEPT = 10;
+	private const SESSIONS_KEPT = 100;
 
 	/**
 	 * What a save in progress does to the switch: document => [ on or off, the editing
@@ -185,9 +185,12 @@ final class Elementor {
 	 *
 	 * @param array<int, mixed> $elements Elementor element data (a page's, or one element's children).
 	 * @param string            $id       Element id to find.
+	 * @param callable|null     $inner    Gives an element's children the way Elementor finds them
+	 *                                    (a component keeps its insides in a document of its own):
+	 *                                    fn( array $children, array $element ): array.
 	 * @return list<string>|null
 	 */
-	public static function pathModes( array $elements, string $id ): ?array {
+	public static function pathModes( array $elements, string $id, ?callable $inner = null ): ?array {
 		foreach ( $elements as $element ) {
 			if ( ! is_array( $element ) ) {
 				continue;
@@ -196,7 +199,11 @@ final class Elementor {
 			if ( (string) ( $element['id'] ?? '' ) === $id ) {
 				return array( $mode );
 			}
-			$below = self::pathModes( isset( $element['elements'] ) && is_array( $element['elements'] ) ? $element['elements'] : array(), $id );
+			$children = isset( $element['elements'] ) && is_array( $element['elements'] ) ? $element['elements'] : array();
+			if ( $inner ) {
+				$children = (array) $inner( $children, $element );
+			}
+			$below = self::pathModes( $children, $id, $inner );
 			if ( null !== $below ) {
 				return array_merge( array( $mode ), $below );
 			}
@@ -226,25 +233,38 @@ final class Elementor {
 	}
 
 	/**
-	 * Which page and which of its elements a request names, read the way Elementor reads them.
-	 * Elementor drops the sign of the page's number, so "-12" is page 12 to it. Some of its
-	 * routes render "element_id" and others "widget_id": every element named is returned, so
-	 * that naming a harmless one cannot stand in for the one that gets rendered.
+	 * Every page and every element a request names, read the way Elementor reads them.
 	 *
-	 * @param array<string, mixed> $params Request parameters.
-	 * @return array{post: int, elements: list<string>}
+	 * A request has several parts (the address, a form, a JSON body) and whoever reads it picks
+	 * a winner among them; two readers can pick differently (a JSON null beats the address for
+	 * one WordPress accessor and not for the other). So nothing is picked here: every part is
+	 * looked at. Elementor drops the sign of a page's number ("-12" is page 12 to it) and reads a
+	 * list as 1. Some of its routes render "element_id" and others "widget_id".
+	 *
+	 * @param array<int, mixed> $sources The request's parameters, one array per part.
+	 * @return array{posts: list<int>, elements: list<string>}
 	 */
-	public static function askedFor( array $params ): array {
-		$raw      = $params['post_id'] ?? 0;
+	public static function askedFor( array $sources ): array {
+		$posts    = array();
 		$elements = array();
-		foreach ( array( 'element_id', 'widget_id' ) as $name ) {
-			if ( isset( $params[ $name ] ) && is_scalar( $params[ $name ] ) && '' !== (string) $params[ $name ] ) {
-				$elements[] = (string) $params[ $name ];
+		foreach ( $sources as $params ) {
+			if ( ! is_array( $params ) ) {
+				continue;
+			}
+			$raw = $params['post_id'] ?? 0;
+			$id  = is_scalar( $raw ) ? abs( (int) $raw ) : ( is_array( $raw ) && $raw ? 1 : 0 );
+			if ( $id > 0 ) {
+				$posts[ $id ] = $id;
+			}
+			foreach ( array( 'element_id', 'widget_id' ) as $name ) {
+				if ( isset( $params[ $name ] ) && is_scalar( $params[ $name ] ) && '' !== (string) $params[ $name ] ) {
+					$elements[ (string) $params[ $name ] ] = (string) $params[ $name ];
+				}
 			}
 		}
 		return array(
-			'post'     => is_scalar( $raw ) ? abs( (int) $raw ) : ( is_array( $raw ) && $raw ? 1 : 0 ),
-			'elements' => $elements,
+			'posts'    => array_values( $posts ),
+			'elements' => array_values( $elements ),
 		);
 	}
 
@@ -254,7 +274,8 @@ final class Elementor {
 	 * filters), skipping every check a page view makes. So for any Elementor route that names a
 	 * page: refuse when the visitor may not read that page, when the page is not published, and
 	 * when an element it names (or a section around it) is not shown to this visitor. Decided
-	 * by what the request names, not by the route, so a route Elementor adds later is covered.
+	 * by what the request names anywhere in it, not by the route, so a route Elementor adds
+	 * later is covered.
 	 *
 	 * @param mixed            $response Response so far.
 	 * @param mixed            $handler  Route handler.
@@ -265,28 +286,45 @@ final class Elementor {
 		if ( is_wp_error( $response ) || ! $request instanceof \WP_REST_Request || ! self::isElementorRoute( (string) $request->get_route() ) ) {
 			return $response;
 		}
-		$asked   = self::askedFor( (array) $request->get_params() );
-		$post_id = $asked['post'];
-		$post    = $post_id ? get_post( $post_id ) : null;
-		if ( ! $post ) {
-			return $response;
-		}
-		$refuse = Restrict::isGated( $post_id ) || ( ! is_post_publicly_viewable( $post ) && ! current_user_can( 'edit_post', $post_id ) );
-		if ( ! $refuse && $asked['elements'] && class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->documents ) ) {
-			$document = \Elementor\Plugin::$instance->documents->get( $post_id );
-			$data     = $document && method_exists( $document, 'get_elements_data' ) ? (array) $document->get_elements_data() : array();
-			foreach ( $asked['elements'] as $element ) {
-				foreach ( (array) self::pathModes( $data, $element ) as $mode ) {
-					if ( ! self::visible( (string) $mode, is_user_logged_in(), Restrict::canView( $post_id ) ) ) {
-						$refuse = true;
-						break 2;
+		$asked = self::askedFor(
+			array(
+				array(
+					'post_id'    => $request->get_param( 'post_id' ),
+					'element_id' => $request->get_param( 'element_id' ),
+					'widget_id'  => $request->get_param( 'widget_id' ),
+				),
+				$request->get_url_params(),
+				$request->get_query_params(),
+				$request->get_body_params(),
+				$request->get_json_params(),
+				$request->get_default_params(),
+			)
+		);
+		// The children of an element, the way Elementor's own lookup reaches them.
+		$inner = static fn( array $children, array $element ): array => (array) apply_filters( 'elementor/utils/find_element_recursive/inner_elements', $children, $element ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.ValidHookName.UseUnderscores -- Elementor's own filter, asked the way Elementor asks it.
+		foreach ( $asked['posts'] as $post_id ) {
+			$post = get_post( $post_id );
+			if ( ! $post ) {
+				continue;
+			}
+			$refuse = Restrict::isGated( $post_id ) || ( ! is_post_publicly_viewable( $post ) && ! current_user_can( 'edit_post', $post_id ) );
+			if ( ! $refuse && $asked['elements'] && class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->documents ) ) {
+				$document = \Elementor\Plugin::$instance->documents->get( $post_id );
+				$data     = $document && method_exists( $document, 'get_elements_data' ) ? (array) $document->get_elements_data() : array();
+				foreach ( $asked['elements'] as $element ) {
+					foreach ( (array) self::pathModes( $data, $element, $inner ) as $mode ) {
+						if ( ! self::visible( (string) $mode, is_user_logged_in(), Restrict::canView( $post_id ) ) ) {
+							$refuse = true;
+							break 2;
+						}
 					}
 				}
 			}
+			if ( $refuse ) {
+				return new \WP_Error( 'favr_members_only', __( 'This content is for members.', 'favr-members' ), array( 'status' => rest_authorization_required_code() ) );
+			}
 		}
-		return $refuse
-			? new \WP_Error( 'favr_members_only', __( 'This content is for members.', 'favr-members' ), array( 'status' => rest_authorization_required_code() ) )
-			: $response;
+		return $response;
 	}
 
 	/**
@@ -590,25 +628,44 @@ final class Elementor {
 
 	/**
 	 * "Save as template" copies a page's text into Elementor's template library, which visitors
-	 * can list and search. The copy is told which page it was saved from, and from then on is
-	 * as members-only as that page (Restrict keeps copies in step when the page's switch changes).
+	 * can list and search. The copy is told which page it was saved from and follows that page
+	 * into protection (Restrict keeps copies in step). A copy made while the page was
+	 * members-only holds members-only text: it is marked and stays protected whatever the page
+	 * does later.
+	 *
+	 * Which page: the one the editor is on (every editor request names it). The save dialog's
+	 * own field still names the page the editor was first opened on after the person has moved
+	 * to another page inside the editor, so it is only the fallback; if either is members-only,
+	 * so is the copy.
 	 *
 	 * @param mixed $template_id   The new template.
 	 * @param mixed $template_data What it was saved from.
 	 */
 	public function templateSaved( $template_id, $template_data = array() ): void {
 		$template_id = (int) $template_id;
-		$from        = is_array( $template_data ) && isset( $template_data['post_id'] ) ? (int) $template_data['post_id'] : 0;
-		if ( $template_id <= 0 || $from <= 0 || $from === $template_id ) {
+		$named       = is_array( $template_data ) && isset( $template_data['post_id'] ) ? absint( $template_data['post_id'] ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Elementor has verified the request; this only reads which page the editor is on.
+		$editing = isset( $_REQUEST['editor_post_id'] ) ? absint( wp_unslash( $_REQUEST['editor_post_id'] ) ) : 0;
+		$sources = array();
+		foreach ( array( $editing, $named ) as $from ) {
+			$parent = $from ? wp_is_post_revision( $from ) : 0;
+			$from   = $parent ? (int) $parent : $from;
+			if ( $from > 0 && $from !== $template_id && get_post( $from ) ) {
+				$sources[] = $from;
+			}
+		}
+		if ( $template_id <= 0 || array() === $sources ) {
 			return;
 		}
-		$parent = wp_is_post_revision( $from );
-		$from   = $parent ? (int) $parent : $from;
 		// A copy of a copy belongs to the page the first copy was made from.
-		$origin = (int) get_post_meta( $from, ID::PAGE_META_COPY, true );
-		update_post_meta( $template_id, ID::PAGE_META_COPY, $origin > 0 ? $origin : $from );
-		if ( Restrict::flagged( get_post_meta( $from, ID::PAGE_META_GATED, true ) ) ) {
-			update_post_meta( $template_id, ID::PAGE_META_GATED, true );
+		$origin = (int) get_post_meta( $sources[0], ID::PAGE_META_COPY, true );
+		update_post_meta( $template_id, ID::PAGE_META_COPY, $origin > 0 ? $origin : $sources[0] );
+		foreach ( $sources as $from ) {
+			if ( Restrict::flagged( get_post_meta( $from, ID::PAGE_META_GATED, true ) ) ) {
+				update_post_meta( $template_id, ID::PAGE_META_GATED, true );
+				update_post_meta( $template_id, ID::PAGE_META_KEPT, true );
+				break;
+			}
 		}
 	}
 
@@ -637,7 +694,8 @@ final class Elementor {
 	public function guardTemplateBulkExport( $redirect, $action = '', $post_ids = array() ) {
 		if ( is_string( $action ) && false !== strpos( $action, 'export' ) ) {
 			foreach ( (array) $post_ids as $id ) {
-				if ( Restrict::isGated( (int) $id ) ) {
+				// Elementor drops the sign of the number it is given.
+				if ( is_scalar( $id ) && Restrict::isGated( abs( (int) $id ) ) ) {
 					wp_die( esc_html__( 'This content is for members.', 'favr-members' ), '', array( 'response' => 403 ) );
 				}
 			}

@@ -153,7 +153,8 @@ final class Restrict {
 	private static array $going = array();
 
 	/**
-	 * A page's switch was set: its copies (Elementor templates saved from it) follow.
+	 * A page's switch was set: its copies (Elementor templates saved from it) follow. Protection
+	 * spreads to every copy; it is lifted again only from copies made while the page was public.
 	 *
 	 * @param mixed $meta_id Meta row.
 	 * @param mixed $post_id Post.
@@ -205,7 +206,8 @@ final class Restrict {
 		foreach ( $copies as $copy ) {
 			if ( $on ) {
 				update_post_meta( (int) $copy, ID::PAGE_META_GATED, true );
-			} else {
+			} elseif ( ! get_post_meta( (int) $copy, ID::PAGE_META_KEPT, true ) ) {
+				// A copy made while the page was members-only holds members-only text and stays.
 				delete_post_meta( (int) $copy, ID::PAGE_META_GATED );
 			}
 		}
