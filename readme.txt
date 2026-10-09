@@ -24,7 +24,8 @@ Member records (individual or business), member logins and a member dashboard fo
 
 = 1.2.1 =
 * Members-only pages and posts: hidden text could still reach non-members by side routes (a Latest Posts block showing full posts, a members-only Elementor page embedded in another page, Elementor Pro's load-more address, the excerpt in the page source and on Elementor Loop Grid cards, comment feeds, and search matching hidden words). All closed.
-* Saving a members-only page in Elementor no longer switches the protection off, and flipping the switch takes effect when you publish, not at the next autosave.
+* Saving a members-only page in Elementor no longer switches the protection off, and flipping the switch takes effect when you publish, not at the next autosave. Looking at a revision, visiting Site Settings or publishing from a tab left open no longer changes it either.
+* A template saved from a members-only page is members-only too.
 * The site header and footer are no longer replaced by the members box on members-only pages and on lists.
 * The members box tells a signed-in person where they stand (no membership, application in review, lapsed, not active yet).
 * Staff see "Members only" next to the title in the Pages and Posts lists and a note on the page itself. Editors who cannot edit a page are still let in.

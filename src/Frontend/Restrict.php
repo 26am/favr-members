@@ -89,6 +89,8 @@ final class Restrict {
 		add_filter( 'posts_search', array( $this, 'searchTitlesOnly' ), 20, 2 );
 		add_filter( 'hello_elementor_description_meta_tag', array( $this, 'themeDescription' ) );
 		add_filter( 'wp_sitemaps_posts_query_args', array( $this, 'sitemap' ) );
+		add_filter( 'wpseo_sitemap_entry', array( $this, 'sitemapEntry' ), 10, 3 );
+		add_filter( 'rank_math/sitemap/entry', array( $this, 'sitemapEntry' ), 10, 3 );
 		add_filter( 'wp_robots', array( $this, 'robots' ) );
 
 		add_filter( 'display_post_states', array( $this, 'postState' ), 10, 2 );
@@ -714,6 +716,19 @@ final class Restrict {
 			),
 		);
 		return $args;
+	}
+
+	/**
+	 * Yoast SEO and Rank Math build sitemaps of their own and ask about each entry: leave
+	 * members-only pages out of those too.
+	 *
+	 * @param mixed $url    The entry (false leaves it out).
+	 * @param mixed $type   What it is an entry for: post, term or user.
+	 * @param mixed $item   The post, term or user.
+	 * @return mixed
+	 */
+	public function sitemapEntry( $url, $type = '', $item = null ) {
+		return 'post' === $type && is_object( $item ) && isset( $item->ID ) && self::isMembersOnly( (int) $item->ID ) ? false : $url;
 	}
 
 	/**

@@ -386,6 +386,11 @@ foreach ( array( 'post', 'page' ) as $favr_gate_type ) {
 	$listed = array_merge( $listed, array_map( 'intval', ( new WP_Query( $args ) )->posts ) );
 }
 $check( 'the sitemap lists the public post and not the members-only ones', in_array( $open, $listed, true ) && ! in_array( $hidden, $listed, true ) && ! in_array( $page, $listed, true ) );
+// Yoast SEO and Rank Math build sitemaps of their own and ask about each entry.
+foreach ( array( 'wpseo_sitemap_entry' => 'Yoast SEO', 'rank_math/sitemap/entry' => 'Rank Math' ) as $hook => $plugin ) {
+	$entry = array( 'loc' => 'https://example.test/x/' );
+	$check( $plugin . '\'s sitemap leaves members-only posts out too', false === apply_filters( $hook, $entry, 'post', get_post( $hidden ) ) && $entry === apply_filters( $hook, $entry, 'post', get_post( $open ) ) && $entry === apply_filters( $hook, $entry, 'term', get_term( $cat ) ) );
+}
 $states = (array) apply_filters( 'display_post_states', array(), get_post( $hidden ) );
 $check( 'the Posts list says "Members only" next to the title', in_array( 'Members only', $states, true ) && ! in_array( 'Members only', (array) apply_filters( 'display_post_states', array(), get_post( $open ) ), true ) );
 $single = static function ( int $id ) use ( $loop ): string {
