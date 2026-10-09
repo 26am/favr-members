@@ -574,6 +574,15 @@ if ( $built ) {
 	false === $settings ? delete_option( ID::OPTION_SETTINGS ) : update_option( ID::OPTION_SETTINGS, $settings );
 	\FavrMembers\Support\Settings::flush();
 	$check( 'and any other page with the switch on is members-only', $is() );
+	if ( class_exists( '\FavrPayments\Support\Settings' ) ) {
+		// Applicants and lapsed members pay on Favr Payments' pay page before they are members.
+		$pay  = \FavrPayments\Support\Settings::get( 'pay_page' );
+		$kept = get_option( 'favr_pay_settings' );
+		\FavrPayments\Support\Settings::update( array( 'pay_page' => $built ) );
+		$check( 'Favr Payments\' pay page stays open even when someone switches it to members only', ! $is() );
+		\FavrPayments\Support\Settings::update( array( 'pay_page' => $pay ) );
+		$check( '(and the page is members-only again once it is no longer the pay page)', $is() );
+	}
 }
 
 // --- Clean up ----------------------------------------------------------------------------------

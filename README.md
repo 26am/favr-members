@@ -49,8 +49,16 @@ The edit screen only shows the fields for the chosen type, so individual members
 **Members-only content**
 - The **Members Only** block wraps any content.
 - `[favr_members_only]…[/favr_members_only]`
-- A "Members only" toggle in the page/post sidebar hides the whole content and adds noindex.
-- Staff who can edit the page always see everything.
+- A "Members only" switch on pages and posts (block editor sidebar → Member access; in Elementor,
+  Page Settings → Favr Members) hides the text, the hand-written excerpt and the comments from
+  everyone but current members. The title, date and featured image stay public, so a members-only
+  article is still listed and found by its title. The page is marked noindex and left out of the
+  sitemap.
+- Non-members get a box in its place: a log-in button for visitors, and for someone who is logged
+  in a line saying where they stand (no membership, application in review, lapsed, not active yet).
+- Staff always see everything, with a note on the page that visitors do not, and "Members only"
+  next to the title in the Pages and Posts lists.
+- The log-in, account and join pages (and Favr Payments' pay page) can never be members-only.
 
 ## With Favr Directory
 
