@@ -103,6 +103,7 @@ $open   = $post( array( 'post_title' => 'Gating public post', 'post_content' => 
 $hidden = $post( array( 'post_title' => 'Gating members post', 'post_content' => '<!-- wp:paragraph --><p>Hidden body ' . $mark( 'body' ) . '.</p><!-- /wp:paragraph -->', 'post_excerpt' => 'Hidden excerpt ' . $mark( 'excerpt' ) ), true );
 $auto   = $post( array( 'post_title' => 'Gating members post without an excerpt', 'post_content' => '<!-- wp:paragraph --><p>Hidden body ' . $mark( 'autobody' ) . ' with enough words after it for WordPress to make an excerpt of its own.</p><!-- /wp:paragraph -->' ), true );
 $page   = $post( array( 'post_type' => 'page', 'post_title' => 'Gating members page', 'post_content' => '<!-- wp:paragraph --><p>Hidden page ' . $mark( 'page' ) . '.</p><!-- /wp:paragraph -->' ), true );
+$plain  = $post( array( 'post_title' => 'Gating public post without an excerpt', 'post_content' => '<!-- wp:paragraph --><p>Public body ' . $mark( 'plainbody' ) . ' with enough words after it for WordPress to make an excerpt of its own.</p><!-- /wp:paragraph -->' ), false );
 wp_insert_comment( array( 'comment_post_ID' => $hidden, 'comment_author' => 'A member', 'comment_author_email' => 'm@example.test', 'comment_content' => 'Hidden comment ' . $mark( 'comment' ), 'comment_approved' => 1 ) );
 $built  = 0;
 if ( class_exists( '\Elementor\Plugin' ) ) {
@@ -125,6 +126,69 @@ if ( class_exists( '\Elementor\Plugin' ) ) {
 						),
 					),
 					'settings' => array( 'favr_members_only' => '1' ),
+				)
+			);
+		}
+	);
+}
+// A news list the way Elementor Pro builds one: a Loop Grid whose card shows each post's title and
+// its hand-written excerpt (Elementor's Post Excerpt reads that straight from the post).
+$grid = 0;
+if ( $built && defined( 'ELEMENTOR_PRO_VERSION' ) ) {
+	$card = (int) wp_insert_post( array( 'post_type' => 'elementor_library', 'post_status' => 'publish', 'post_title' => 'Gating loop card', 'post_author' => $owner ) );
+	$made['posts'][] = $card;
+	update_post_meta( $card, '_elementor_edit_mode', 'builder' );
+	update_post_meta( $card, '_elementor_template_type', 'loop-item' );
+	wp_set_object_terms( $card, 'loop-item', 'elementor_library_type' );
+	$grid = $post( array( 'post_type' => 'page', 'post_title' => 'Gating news list', 'post_content' => '' ), false );
+	update_post_meta( $grid, '_elementor_edit_mode', 'builder' );
+	$tag  = static fn( string $name ): string => '[elementor-tag id="gtg' . substr( md5( $name ), 0, 4 ) . '" name="' . $name . '" settings="%7B%7D"]';
+	$as(
+		$owner,
+		static function () use ( $card, $grid, $cat, $tag ): void {
+			\Elementor\Plugin::$instance->documents->get( $card, false )->save(
+				array(
+					'elements' => array(
+						array(
+							'id'       => 'gtg1001',
+							'elType'   => 'container',
+							'settings' => array(),
+							'isInner'  => false,
+							'elements' => array(
+								array( 'id' => 'gtg1002', 'elType' => 'widget', 'widgetType' => 'heading', 'settings' => array( 'title' => 'Title', '__dynamic__' => array( 'title' => $tag( 'post-title' ) ) ), 'elements' => array() ),
+								array( 'id' => 'gtg1003', 'elType' => 'widget', 'widgetType' => 'text-editor', 'settings' => array( 'editor' => 'Excerpt', '__dynamic__' => array( 'editor' => $tag( 'post-excerpt' ) ) ), 'elements' => array() ),
+							),
+						),
+					),
+					'settings' => array( 'source' => 'post' ),
+				)
+			);
+			\Elementor\Plugin::$instance->documents->get( $grid, false )->save(
+				array(
+					'elements' => array(
+						array(
+							'id'       => 'gtg2001',
+							'elType'   => 'container',
+							'settings' => array(),
+							'isInner'  => false,
+							'elements' => array(
+								array(
+									'id'         => 'gtg2002',
+									'elType'     => 'widget',
+									'widgetType' => 'loop-grid',
+									'settings'   => array(
+										'template_id'                 => $card,
+										'posts_per_page'              => 10,
+										'post_query_post_type'        => 'post',
+										'post_query_include'          => array( 'terms' ),
+										'post_query_include_term_ids' => array( (string) get_term( $cat )->term_taxonomy_id ),
+									),
+									'elements'   => array(),
+								),
+							),
+						),
+					),
+					'settings' => array(),
 				)
 			);
 		}
@@ -324,6 +388,39 @@ $check( 'staff reading a members-only post are told visitors do not see it', fal
 $check( 'a member reading it sees no such note', false === strpos( (string) $as( $people['a current member'], static fn(): string => $single( $hidden ) ), 'favr-m-staffnote' ) );
 $check( 'and there is none on a public post', false === strpos( (string) $as( $people['an editor'], static fn(): string => $single( $open ) ), 'favr-m-staffnote' ) );
 
+// --- Around a members-only post ------------------------------------------------------------------
+echo "Around a members-only post\n";
+// A list of other posts on a members-only page (a Latest Posts block in the footer, "related posts")
+// asks for their excerpts while the page's own post is the current one.
+$near = (string) $as( $visitor, static fn(): string => $loop( array( 'p' => $hidden ), static function () use ( $plain, $auto ): void { echo esc_html( get_the_excerpt( $plain ) . ' | ' . get_the_excerpt( $auto ) ); } ) );
+$check( 'on a members-only page, a public post listed beside it keeps its own excerpt', false !== strpos( $near, $mark( 'plainbody' ) ), $near );
+$check( 'and another members-only post listed there stays hidden', false === strpos( $near, $mark( 'autobody' ) ) );
+$near = (string) $as( $visitor, static fn(): string => $loop( array( 'p' => $plain ), static function () use ( $auto ): void { echo esc_html( get_the_excerpt( $auto ) ); the_content(); } ) );
+$check( 'on a public page, a members-only post listed beside it is hidden and the page itself is not', false === strpos( $near, $mark( 'autobody' ) ) && false !== strpos( $near, $mark( 'plainbody' ) ) );
+$note = (string) $as( $people['an editor'], static fn(): string => $loop( array( 'p' => $auto ), static function (): void { echo esc_html( get_the_excerpt() ); } ) );
+$check( 'the note for staff never ends up inside an excerpt', false === strpos( $note, 'because you are staff' ) && false !== strpos( $note, $mark( 'autobody' ) ), $note );
+// Another plugin handing an empty value to WordPress's filters must not crash the page.
+$crash = '';
+try {
+	apply_filters( 'the_content', null );
+	apply_filters( 'get_the_excerpt', null, null );
+	apply_filters( 'the_content_feed', null, 'rss2' );
+	apply_filters( 'the_excerpt_rss', null );
+	apply_filters( 'comments_array', null, 0 );
+	apply_filters( 'display_post_states', null, null );
+} catch ( \Throwable $e ) {
+	$crash = $e->getMessage();
+}
+$check( 'an empty value from another plugin passing through WordPress\'s filters does not crash the page', '' === $crash, $crash );
+// A copy handed out with its text withheld must never be saved over the real post.
+$copy               = clone get_post( $hidden );
+$copy->post_content = 'This content is for members.';
+$copy->post_excerpt = '';
+$copy->{\FavrMembers\Frontend\Restrict::WITHHELD} = true;
+wp_update_post( $copy );
+clean_post_cache( $hidden );
+$check( 'a withheld copy saved by mistake does not overwrite the real text', false !== strpos( (string) get_post_field( 'post_content', $hidden, 'raw' ), $mark( 'body' ) ) && false !== strpos( (string) get_post_field( 'post_excerpt', $hidden, 'raw' ), $mark( 'excerpt' ) ) );
+
 // --- What the members box says -----------------------------------------------------------------
 echo "What the members box tells each person\n";
 $says = array(
@@ -403,6 +500,19 @@ if ( 200 !== $home['code'] || false === strpos( $home['body'], $mark( 'publicbod
 	}
 	$got = $fetch( home_url( '/?s=' . $mark( 'body' ) ) );
 	$check( 'a visitor searching for a hidden word is not shown which post has it', false === strpos( $got['body'], 'Gating members post' ) );
+
+	if ( $grid ) {
+		$got = $fetch( get_permalink( $grid ) );
+		$check( 'a news list built as an Elementor Loop Grid really lists the posts (the public excerpt is there)', 200 === $got['code'] && false !== strpos( $got['body'], $mark( 'publicexcerpt' ) ), 'http ' . $got['code'] );
+		foreach ( array( 'a visitor', 'a lapsed member' ) as $who ) {
+			$got  = $fetch( get_permalink( $grid ), $people[ $who ] );
+			$seen = $leaks( $got['body'] );
+			$check( 'the Loop Grid, opened by ' . $who . ': nothing hidden, not even the hand-written excerpt', array() === $seen, 'leaked ' . implode( ', ', $seen ) );
+			$check( 'the Loop Grid, opened by ' . $who . ': the members-only post is still listed by its title, as a card and not a log-in box', false !== strpos( $got['body'], 'Gating members post' ) && 0 === $boxes( $got['body'] ), $boxes( $got['body'] ) . ' boxes' );
+		}
+		$got = $fetch( get_permalink( $grid ), $people['a current member'] );
+		$check( 'a member opening the Loop Grid reads the hand-written excerpt', false !== strpos( $got['body'], $mark( 'excerpt' ) ) );
+	}
 
 	foreach ( array( 'the site\'s comments feed' => get_bloginfo( 'comments_rss2_url' ), 'the post\'s own comments feed' => get_post_comments_feed_link( $hidden ), 'the posts feed' => get_bloginfo( 'rss2_url' ), 'the category feed' => get_category_feed_link( $cat ) ) as $what => $url ) {
 		$got  = $fetch( $url );

@@ -70,4 +70,16 @@ final class RestrictTest extends TestCase {
 		$this->assertFalse( Restrict::alwaysOpen( 0, array( 0, '' ) ), 'A page that is not set exempts nothing.' );
 		$this->assertFalse( Restrict::alwaysOpen( 7, array( 'junk', null, array( 7 ) ) ) );
 	}
+
+	public function test_text_is_only_withheld_where_posts_are_handed_to_a_visitor(): void {
+		// A page view, the REST API, and the admin-ajax address "load more" buttons call.
+		$this->assertTrue( Restrict::handsOut( false, false, false, false ) );
+		$this->assertTrue( Restrict::handsOut( true, true, false, false ) );
+		// wp-admin screens, scheduled tasks and WP-CLI are the site working on its own posts,
+		// where a post that was read may be saved again.
+		$this->assertFalse( Restrict::handsOut( true, false, false, false ) );
+		$this->assertFalse( Restrict::handsOut( false, false, true, false ) );
+		$this->assertFalse( Restrict::handsOut( false, false, false, true ) );
+		$this->assertFalse( Restrict::handsOut( true, true, true, false ) );
+	}
 }

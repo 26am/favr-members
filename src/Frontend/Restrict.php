@@ -33,6 +33,20 @@ use FavrMembers\Support\Settings;
 final class Restrict {
 
 	/**
+	 * Marks a copy of a post whose text has been taken out for a visitor who may not read it.
+	 * WordPress carries it along if such a copy is ever saved, which is how the save is caught.
+	 */
+	public const WITHHELD = 'favr_members_withheld';
+
+	/**
+	 * Posts whose excerpt WordPress is building right now, innermost last. While it does, the
+	 * text passing through the_content belongs to that post, not to the page's current post.
+	 *
+	 * @var list<int>
+	 */
+	private static array $excerpts = array();
+
+	/**
 	 * Whether the last post_password_required() answer was "yes, because it is members-only".
 	 * WordPress's next sentence about a "protected post" is then about members, not passwords.
 	 *
@@ -56,10 +70,13 @@ final class Restrict {
 		add_filter( 'the_password_form', array( $this, 'insteadOfPasswordForm' ), 20, 2 );
 		add_filter( 'gettext', array( $this, 'wording' ), 10, 3 );
 
-		add_filter( 'the_posts', array( $this, 'withhold' ), 20, 2 );
+		add_filter( 'the_posts', array( $this, 'withhold' ), 20 );
+		add_action( 'the_post', array( $this, 'withholdCurrent' ), 1 );
+		add_filter( 'wp_insert_post_data', array( $this, 'neverSaveWithheld' ), 1, 2 );
 		add_filter( 'the_content', array( $this, 'gatePage' ), 5 );
 		add_filter( 'the_content', array( $this, 'gatePageLast' ), 99999 );
 		add_filter( 'get_the_excerpt', array( $this, 'gateExcerpt' ), 5, 2 );
+		add_filter( 'get_the_excerpt', array( $this, 'excerptBuilt' ), PHP_INT_MAX );
 		add_filter( 'the_content_feed', array( $this, 'gateFeed' ), 5 );
 		add_filter( 'the_excerpt_rss', array( $this, 'gateFeed' ), 5 );
 		add_filter( 'rest_prepare_post', array( $this, 'gateRest' ), 10, 2 );
@@ -251,35 +268,103 @@ final class Restrict {
 	}
 
 	/**
-	 * On a page view, hand the theme and everything else a copy of a members-only post with its
-	 * text and hand-written excerpt taken out, for a visitor who may not read it. The theme's
-	 * description tag, Elementor's page settings and others read those straight from the post
-	 * the page is about, where no filter on rendered output can reach.
+	 * Whether a request hands posts to a visitor: a page view, a feed, the REST API, or the
+	 * admin-ajax address "load more" buttons call. wp-admin screens, scheduled tasks and WP-CLI
+	 * are the site working on its own posts, where a post that was read may be saved again.
 	 *
-	 * Only the page's own (main) query on the public site, and only copies: the stored post and
-	 * the object cache are never touched, and nothing here runs in wp-admin, the REST API, cron
-	 * or WP-CLI, where a post read might be saved again.
+	 * @param bool $admin Whether this is wp-admin (admin-ajax included).
+	 * @param bool $ajax  Whether this is an admin-ajax request.
+	 * @param bool $cron  Whether a scheduled task is running.
+	 * @param bool $cli   Whether this is WP-CLI.
+	 */
+	public static function handsOut( bool $admin, bool $ajax, bool $cron, bool $cli ): bool {
+		return ! $cron && ! $cli && ( ! $admin || $ajax );
+	}
+
+	/** Whether this request hands posts to a visitor. */
+	private static function handsOutNow(): bool {
+		return self::handsOut( is_admin(), wp_doing_ajax(), wp_doing_cron(), defined( 'WP_CLI' ) && WP_CLI );
+	}
+
+	/**
+	 * Take the text and the hand-written excerpt out of a post object (the object, never the
+	 * stored post) and mark it.
 	 *
-	 * @param mixed          $posts Posts found.
-	 * @param \WP_Query|null $query Query.
+	 * @param \WP_Post $post Post object.
+	 */
+	private static function withheld( \WP_Post $post ): \WP_Post {
+		$post->post_excerpt     = '';
+		$post->post_content     = __( 'This content is for members.', 'favr-members' );
+		$post->{self::WITHHELD} = true;
+		return $post;
+	}
+
+	/**
+	 * Whatever a query finds for a visitor who may not read it, a members-only post is handed
+	 * over as a copy with its text and hand-written excerpt taken out. Themes and page builders
+	 * read those straight from the post (the theme's description tag, Elementor's page
+	 * settings, the excerpt on an Elementor Loop Grid card), where no filter on rendered output
+	 * can reach.
+	 *
+	 * Only copies: the stored post and the object cache keep the real text (WordPress caches a
+	 * query's posts by reading them again once a filter has changed them).
+	 *
+	 * @param mixed $posts Posts found.
 	 * @return mixed
 	 */
-	public function withhold( $posts, $query = null ) {
-		if ( ! is_array( $posts ) || ! $query instanceof \WP_Query || ! $query->is_main_query() ) {
+	public function withhold( $posts ) {
+		if ( ! is_array( $posts ) || array() === $posts || ! self::handsOutNow() ) {
 			return $posts;
 		}
-		if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+		$ids = array();
+		foreach ( $posts as $post ) {
+			if ( $post instanceof \WP_Post ) {
+				$ids[] = (int) $post->ID;
+			}
+		}
+		if ( array() === $ids ) {
 			return $posts;
 		}
+		// The switch of every post found, in one read.
+		update_postmeta_cache( $ids );
 		foreach ( $posts as $index => $post ) {
 			if ( $post instanceof \WP_Post && self::isGated( (int) $post->ID ) ) {
-				$copy               = clone $post;
-				$copy->post_excerpt = '';
-				$copy->post_content = __( 'This content is for members.', 'favr-members' );
-				$posts[ $index ]    = $copy;
+				$posts[ $index ] = self::withheld( clone $post );
 			}
 		}
 		return $posts;
+	}
+
+	/**
+	 * The same for a post that becomes the current post without coming out of a query
+	 * (setup_postdata() on a post fetched by id). WordPress builds a fresh object each time it
+	 * fetches a post, so this changes what the caller holds and nothing else.
+	 *
+	 * @param mixed $post Post being set up.
+	 */
+	public function withholdCurrent( $post ): void {
+		if ( $post instanceof \WP_Post && ! isset( $post->{self::WITHHELD} ) && self::handsOutNow() && self::isGated( (int) $post->ID ) ) {
+			self::withheld( $post );
+		}
+	}
+
+	/**
+	 * A copy with its text taken out must never be written over the real post, whoever saves it.
+	 *
+	 * @param mixed $data    Post fields about to be stored (slashed).
+	 * @param mixed $postarr What was passed to the save.
+	 * @return mixed
+	 */
+	public function neverSaveWithheld( $data, $postarr = array() ) {
+		if ( ! is_array( $data ) || ! is_array( $postarr ) || empty( $postarr[ self::WITHHELD ] ) || empty( $postarr['ID'] ) ) {
+			return $data;
+		}
+		$stored = get_post( (int) $postarr['ID'] );
+		if ( $stored instanceof \WP_Post && ! isset( $stored->{self::WITHHELD} ) ) {
+			$data['post_content'] = wp_slash( $stored->post_content );
+			$data['post_excerpt'] = wp_slash( $stored->post_excerpt );
+		}
+		return $data;
 	}
 
 	/**
@@ -347,15 +432,25 @@ final class Restrict {
 	}
 
 	/**
+	 * The post whose text is passing through the_content: the one WordPress is building an
+	 * excerpt for, when it is, and otherwise the current post. A list of other posts on a
+	 * members-only page asks for their excerpts while the page's own post is still current.
+	 */
+	private static function subject(): int {
+		$count = count( self::$excerpts );
+		return $count && doing_filter( 'get_the_excerpt' ) ? self::$excerpts[ $count - 1 ] : (int) get_the_ID();
+	}
+
+	/**
 	 * Whole-page gate, first half: before anything else works on the content (blocks,
 	 * shortcodes, embeds, page builders), take it away, so nothing hidden is ever processed.
 	 *
-	 * @param string $content Content.
+	 * @param mixed $content Content.
 	 */
-	public function gatePage( string $content ): string {
+	public function gatePage( $content ): string {
 		// Every context that runs the_content (single views, archives, blocks, search,
 		// excerpts generated from content) — not just singular pages.
-		return self::isGated( (int) get_the_ID() ) ? '' : $content;
+		return self::isGated( self::subject() ) ? '' : (string) $content;
 	}
 
 	/**
@@ -363,24 +458,25 @@ final class Restrict {
 	 * content would be. Done last so WordPress's paragraph formatting and other plugins' additions
 	 * (sharing buttons, related posts) neither mangle the box nor sit underneath it.
 	 *
-	 * @param string $content Content.
+	 * @param mixed $content Content.
 	 */
-	public function gatePageLast( string $content ): string {
-		$post_id = (int) get_the_ID();
+	public function gatePageLast( $content ): string {
+		$post_id = self::subject();
 		if ( self::isGated( $post_id ) ) {
 			return self::gate( '' );
 		}
-		return self::staffNote( $post_id ) . $content;
+		return self::staffNote( $post_id ) . (string) $content;
 	}
 
 	/**
 	 * Staff see a members-only page in full, which looks exactly like a page that is not
-	 * protected. Say that it is, once, above the content of the page being viewed.
+	 * protected. Say that it is, once, above the content of the page being viewed (and never
+	 * inside an excerpt made from it).
 	 *
 	 * @param int $post_id Post id.
 	 */
 	public static function staffNote( int $post_id ): string {
-		if ( ! $post_id || ! is_singular() || ! in_the_loop() || ! is_main_query() || get_queried_object_id() !== $post_id ) {
+		if ( ! $post_id || ! is_singular() || ! in_the_loop() || ! is_main_query() || get_queried_object_id() !== $post_id || doing_filter( 'get_the_excerpt' ) ) {
 			return '';
 		}
 		if ( ! self::isMembersOnly( $post_id ) || ! self::isStaff( $post_id ) ) {
@@ -392,33 +488,47 @@ final class Restrict {
 	}
 
 	/**
-	 * Hand-written excerpts are hidden too.
+	 * Hand-written excerpts are hidden too. From here until excerptBuilt(), WordPress may make
+	 * an excerpt out of the post's text: remember whose.
 	 *
-	 * @param string        $excerpt Excerpt.
+	 * @param mixed         $excerpt Excerpt.
 	 * @param \WP_Post|null $post    Post.
 	 */
-	public function gateExcerpt( string $excerpt, $post = null ): string {
-		$post_id = $post instanceof \WP_Post ? (int) $post->ID : (int) get_the_ID();
-		return self::isGated( $post_id ) ? __( 'This content is for members.', 'favr-members' ) : $excerpt;
+	public function gateExcerpt( $excerpt, $post = null ): string {
+		$post_id          = $post instanceof \WP_Post ? (int) $post->ID : (int) get_the_ID();
+		self::$excerpts[] = $post_id;
+		return self::isGated( $post_id ) ? __( 'This content is for members.', 'favr-members' ) : (string) $excerpt;
+	}
+
+	/**
+	 * The excerpt is built.
+	 *
+	 * @param mixed $excerpt Excerpt.
+	 * @return mixed
+	 */
+	public function excerptBuilt( $excerpt ) {
+		array_pop( self::$excerpts );
+		return $excerpt;
 	}
 
 	/**
 	 * RSS/Atom never carries members-only content.
 	 *
-	 * @param string $content Content.
+	 * @param mixed $content Content.
 	 */
-	public function gateFeed( string $content ): string {
-		return self::isGated( (int) get_the_ID() ) ? __( 'This content is for members.', 'favr-members' ) : $content;
+	public function gateFeed( $content ): string {
+		return self::isGated( (int) get_the_ID() ) ? __( 'This content is for members.', 'favr-members' ) : (string) $content;
 	}
 
 	/**
 	 * REST responses for members-only posts omit content and excerpt for non-members.
 	 *
-	 * @param \WP_REST_Response $response Response.
-	 * @param \WP_Post          $post     Post.
+	 * @param mixed $response Response.
+	 * @param mixed $post     Post.
+	 * @return mixed
 	 */
-	public function gateRest( \WP_REST_Response $response, \WP_Post $post ): \WP_REST_Response {
-		if ( ! self::isGated( (int) $post->ID ) ) {
+	public function gateRest( $response, $post = null ) {
+		if ( ! $response instanceof \WP_REST_Response || ! $post instanceof \WP_Post || ! self::isGated( (int) $post->ID ) ) {
 			return $response;
 		}
 		$data = $response->get_data();
@@ -549,10 +659,11 @@ final class Restrict {
 	/**
 	 * Keep gated pages out of search results.
 	 *
-	 * @param array<string, bool|string> $robots Robots.
+	 * @param mixed $robots Robots.
 	 * @return array<string, bool|string>
 	 */
-	public function robots( array $robots ): array {
+	public function robots( $robots ): array {
+		$robots = is_array( $robots ) ? $robots : array();
 		if ( is_singular() && self::isMembersOnly( (int) get_queried_object_id() ) ) {
 			$robots['noindex'] = true;
 		}
