@@ -153,7 +153,13 @@ final class Restrict {
 	 * @param int $post_id Post id.
 	 */
 	public static function isMembersOnly( int $post_id ): bool {
-		return $post_id > 0 && self::flagged( get_post_meta( $post_id, ID::PAGE_META_GATED, true ) ) && ! self::alwaysOpen( $post_id, self::openPages() );
+		if ( $post_id <= 0 ) {
+			return false;
+		}
+		// An older saved version of a page (a revision, an autosave) is as members-only as the page.
+		$parent  = wp_is_post_revision( $post_id );
+		$post_id = $parent ? (int) $parent : $post_id;
+		return self::flagged( get_post_meta( $post_id, ID::PAGE_META_GATED, true ) ) && ! self::alwaysOpen( $post_id, self::openPages() );
 	}
 
 	/**
@@ -219,18 +225,29 @@ final class Restrict {
 	}
 
 	/**
-	 * Whether the current user is staff as far as a post is concerned: they can edit it, or they
-	 * edit other people's posts of that kind. The second half matters where a page is locked
-	 * against editing (Favr Sites locks the pages it manages for Editors): an editor who may
-	 * not change a page is still staff, and must not be shown "your membership isn't active".
+	 * Whether the current user is staff as far as a post is concerned: they wrote it, they can
+	 * edit it, or they edit other people's posts of that kind. The last one matters where a page
+	 * is locked against editing (Favr Sites locks the pages it manages for Editors): an editor
+	 * who may not change a page is still staff, and must not be shown "your membership isn't
+	 * active". The first matters for a Contributor, who cannot edit their own post once it is
+	 * published.
 	 *
 	 * @param int $post_id Post id.
 	 */
 	public static function isStaff( int $post_id ): bool {
-		if ( current_user_can( 'edit_post', $post_id ) ) {
+		$user_id = get_current_user_id();
+		if ( ! $user_id ) {
+			return false;
+		}
+		$parent = wp_is_post_revision( $post_id );
+		$post   = get_post( $parent ? (int) $parent : $post_id );
+		if ( ! $post instanceof \WP_Post ) {
+			return false;
+		}
+		if ( (int) $post->post_author === $user_id || current_user_can( 'edit_post', (int) $post->ID ) ) {
 			return true;
 		}
-		$type = get_post_type_object( (string) get_post_type( $post_id ) );
+		$type = get_post_type_object( $post->post_type );
 		return null !== $type && current_user_can( $type->cap->edit_others_posts );
 	}
 
@@ -286,15 +303,25 @@ final class Restrict {
 		return self::handsOut( is_admin(), wp_doing_ajax(), wp_doing_cron(), defined( 'WP_CLI' ) && WP_CLI );
 	}
 
+	/** The sentence that stands where hidden text would be. */
+	private static function placeholder(): string {
+		return __( 'This content is for members.', 'favr-members' );
+	}
+
+	/** Whether the current visitor may read every members-only post there is. */
+	private static function readsAll(): bool {
+		return self::isMember() || ( current_user_can( 'edit_others_posts' ) && current_user_can( 'edit_others_pages' ) );
+	}
+
 	/**
-	 * Take the text and the hand-written excerpt out of a post object (the object, never the
-	 * stored post) and mark it.
+	 * Put that sentence in place of the text and the hand-written excerpt of a post object (the
+	 * object, never the stored post) and mark it.
 	 *
 	 * @param \WP_Post $post Post object.
 	 */
 	private static function withheld( \WP_Post $post ): \WP_Post {
-		$post->post_excerpt     = '';
-		$post->post_content     = __( 'This content is for members.', 'favr-members' );
+		$post->post_excerpt     = self::placeholder();
+		$post->post_content     = self::placeholder();
 		$post->{self::WITHHELD} = true;
 		return $post;
 	}
@@ -313,7 +340,7 @@ final class Restrict {
 	 * @return mixed
 	 */
 	public function withhold( $posts ) {
-		if ( ! is_array( $posts ) || array() === $posts || ! self::handsOutNow() ) {
+		if ( ! is_array( $posts ) || array() === $posts || ! self::handsOutNow() || self::readsAll() ) {
 			return $posts;
 		}
 		$ids = array();
@@ -325,8 +352,9 @@ final class Restrict {
 		if ( array() === $ids ) {
 			return $posts;
 		}
-		// The switch of every post found, in one read.
-		update_postmeta_cache( $ids );
+		// Every post found and its switch, read in one go: an unpaged list has not been cached
+		// by WordPress at this point, and asking post by post would cost a query each.
+		_prime_post_caches( $ids, false, true );
 		foreach ( $posts as $index => $post ) {
 			if ( $post instanceof \WP_Post && self::isGated( (int) $post->ID ) ) {
 				$posts[ $index ] = self::withheld( clone $post );
@@ -349,20 +377,34 @@ final class Restrict {
 	}
 
 	/**
-	 * A copy with its text taken out must never be written over the real post, whoever saves it.
+	 * A copy with its text taken out must never be written over the real post, whoever saves
+	 * it: where a save carries the placeholder sentence as the text (or as the excerpt) of a
+	 * members-only post, or of a post object marked as a copy, the stored text stays. Text that
+	 * was changed on purpose is saved as usual.
 	 *
 	 * @param mixed $data    Post fields about to be stored (slashed).
 	 * @param mixed $postarr What was passed to the save.
 	 * @return mixed
 	 */
 	public function neverSaveWithheld( $data, $postarr = array() ) {
-		if ( ! is_array( $data ) || ! is_array( $postarr ) || empty( $postarr[ self::WITHHELD ] ) || empty( $postarr['ID'] ) ) {
+		if ( ! is_array( $data ) || ! is_array( $postarr ) || empty( $postarr['ID'] ) ) {
 			return $data;
 		}
-		$stored = get_post( (int) $postarr['ID'] );
+		$post_id = (int) $postarr['ID'];
+		$fields  = array();
+		foreach ( array( 'post_content', 'post_excerpt' ) as $field ) {
+			if ( isset( $data[ $field ] ) && is_string( $data[ $field ] ) && wp_unslash( $data[ $field ] ) === self::placeholder() ) {
+				$fields[] = $field;
+			}
+		}
+		if ( array() === $fields || ( empty( $postarr[ self::WITHHELD ] ) && ! self::isMembersOnly( $post_id ) ) ) {
+			return $data;
+		}
+		$stored = get_post( $post_id );
 		if ( $stored instanceof \WP_Post && ! isset( $stored->{self::WITHHELD} ) ) {
-			$data['post_content'] = wp_slash( $stored->post_content );
-			$data['post_excerpt'] = wp_slash( $stored->post_excerpt );
+			foreach ( $fields as $field ) {
+				$data[ $field ] = wp_slash( $stored->$field );
+			}
 		}
 		return $data;
 	}
@@ -577,26 +619,38 @@ final class Restrict {
 	}
 
 	/**
-	 * The words of a search to look for in titles: the ones the searcher did not exclude.
+	 * A search as it applies to a title: the words it must have and the words it must not.
 	 *
 	 * @param array<int, mixed> $terms  Search terms as WordPress parsed them.
 	 * @param string            $prefix The "leave these out" prefix ('' when that is switched off).
-	 * @return list<string>
+	 * @return array{has: list<string>, not: list<string>}
 	 */
-	public static function titleTerms( array $terms, string $prefix ): array {
-		$keep = array();
+	public static function titleSearch( array $terms, string $prefix ): array {
+		$words = array(
+			'has' => array(),
+			'not' => array(),
+		);
 		foreach ( $terms as $term ) {
-			if ( ! is_string( $term ) || '' === $term || ( '' !== $prefix && str_starts_with( $term, $prefix ) ) ) {
+			if ( ! is_string( $term ) || '' === $term ) {
 				continue;
 			}
-			$keep[] = $term;
+			if ( '' !== $prefix && str_starts_with( $term, $prefix ) ) {
+				$term = substr( $term, strlen( $prefix ) );
+				if ( '' !== $term ) {
+					$words['not'][] = $term;
+				}
+				continue;
+			}
+			$words['has'][] = $term;
 		}
-		return $keep;
+		return $words;
 	}
 
 	/**
-	 * A search must not say which members-only post contains a word: for anyone who may not
-	 * read them, members-only posts are only found by their titles.
+	 * A search must not say what a members-only post holds. For anyone who may not read it, such
+	 * a post is matched by its title alone: the words asked for and the words excluded ("-word")
+	 * are both looked for in the title, never in the text or the excerpt. Posts the searcher
+	 * wrote, and everything else, are searched the way WordPress always does.
 	 *
 	 * @param string    $search The search part of the query's WHERE.
 	 * @param \WP_Query $query  Query.
@@ -604,22 +658,28 @@ final class Restrict {
 	public function searchTitlesOnly( $search, $query ): string {
 		global $wpdb;
 		$search = (string) $search;
-		if ( '' === trim( $search ) || ! $query instanceof \WP_Query ) {
-			return $search;
-		}
-		// Members read everything; so do staff who can edit other people's posts and pages.
-		if ( self::isMember() || ( current_user_can( 'edit_others_posts' ) && current_user_can( 'edit_others_pages' ) ) ) {
+		if ( '' === trim( $search ) || ! $query instanceof \WP_Query || self::readsAll() ) {
 			return $search;
 		}
 		/** This filter is documented in wp-includes/class-wp-query.php */
 		$prefix = (string) apply_filters( 'wp_query_search_exclusion_prefix', '-' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own filter, asked the way core asks it.
-		$titles = array();
-		foreach ( self::titleTerms( (array) $query->get( 'search_terms' ), $prefix ) as $term ) {
-			$titles[] = $wpdb->prepare( "{$wpdb->posts}.post_title LIKE %s", '%' . $wpdb->esc_like( $term ) . '%' );
+		$words  = self::titleSearch( (array) $query->get( 'search_terms' ), $prefix );
+		$title  = array();
+		foreach ( $words['has'] as $term ) {
+			$title[] = $wpdb->prepare( "{$wpdb->posts}.post_title LIKE %s", '%' . $wpdb->esc_like( $term ) . '%' );
 		}
-		$by_title = $titles ? '( ' . implode( ' AND ', $titles ) . ' )' : '1 = 0';
-		$flagged  = $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value NOT IN ( '', '0' )", ID::PAGE_META_GATED );
-		return $search . " AND ( {$wpdb->posts}.ID NOT IN ( {$flagged} ) OR {$by_title} ) ";
+		foreach ( $words['not'] as $term ) {
+			$title[] = $wpdb->prepare( "{$wpdb->posts}.post_title NOT LIKE %s", '%' . $wpdb->esc_like( $term ) . '%' );
+		}
+		$by_title = $title ? implode( ' AND ', $title ) : '1 = 0';
+		$hidden   = $wpdb->prepare( "{$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value NOT IN ( '', '0' ) )", ID::PAGE_META_GATED );
+		$user_id  = get_current_user_id();
+		if ( $user_id ) {
+			$hidden .= $wpdb->prepare( " AND {$wpdb->posts}.post_author <> %d", $user_id );
+		}
+		// WordPress's own condition starts with " AND "; what follows is one condition.
+		$usual = (string) preg_replace( '/^\s*AND\s+/i', '', $search );
+		return " AND ( ( NOT ( {$hidden} ) AND ( {$usual} ) ) OR ( ( {$hidden} ) AND ( {$by_title} ) ) ) ";
 	}
 
 	/**

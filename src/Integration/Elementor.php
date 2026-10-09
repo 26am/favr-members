@@ -19,8 +19,9 @@ use FavrMembers\Vendor\FavrCore\Integrations\Elementor\Widget;
  *   everyone, members only, non-members, logged-in or logged-out visitors. Hidden elements
  *   aren't rendered at all, so nothing leaks into the page source.
  * - "Members only" in each page's Elementor settings. The switch has one home, the page flag the
- *   block editor toggle uses: Elementor is shown its state when the editor opens and never
- *   stores a copy of its own (in the page, an autosave or a revision) that could go stale.
+ *   block editor toggle uses. Elementor is shown its state when the editor opens, the page never
+ *   stores a copy that could go stale, and a save changes the flag only when the person at that
+ *   editor changed the switch (see documentSaved()).
  * Everything runs on Elementor's hooks; without Elementor none of it loads.
  */
 final class Elementor {
@@ -30,12 +31,26 @@ final class Elementor {
 	/** The "Members only" switch in a page's Elementor settings. */
 	private const PAGE_SWITCH = 'favr_members_only';
 
+	/** How the switch stood when the editor opened ("1|token" or "|token"), sent back with each save. */
+	private const PAGE_SWITCH_WAS = 'favr_members_only_was';
+
+	/** Where Elementor keeps a document's page settings. */
+	private const PAGE_SETTINGS = '_elementor_page_settings';
+
 	/**
-	 * What a save in progress says about the switch (document object id => on or off).
+	 * What a save in progress says about the switch: document => [ on or off, how it stood when
+	 * the editor opened (null when not said), the editing session's token ].
 	 *
-	 * @var array<int, bool>
+	 * @var \WeakMap<object, array{0: bool, 1: bool|null, 2: string}>|null
 	 */
-	private array $switched = array();
+	private ?\WeakMap $switched = null;
+
+	/**
+	 * The document whose editor configuration Elementor is putting together.
+	 *
+	 * @var object|null
+	 */
+	private ?object $configuring = null;
 
 	/** Hook. */
 	public function hook(): void {
@@ -54,11 +69,13 @@ final class Elementor {
 		// A members-only page gives Elementor nothing to build, whoever asks it to (a template
 		// shortcode, a template widget, another page embedding it).
 		add_filter( 'elementor/frontend/builder_content_data', array( $this, 'gateBuilderData' ), 10, 2 );
-		// Elementor Pro has a public REST route that renders one element of any page on request,
+		// Elementor Pro has public REST routes that render one element of any page on request,
 		// skipping every check a page view makes.
 		add_filter( 'rest_request_before_callbacks', array( $this, 'guardRenderRoute' ), 10, 3 );
 		add_action( 'elementor/documents/register_controls', array( $this, 'documentControls' ) );
+		add_action( 'elementor/document/before_get_config', array( $this, 'configuring' ) );
 		add_filter( 'elementor/document/config', array( $this, 'documentConfig' ), 10, 2 );
+		add_action( 'elementor/template-library/after_save_template', array( $this, 'templateSaved' ), 10, 2 );
 		add_filter( 'elementor/document/save/data', array( $this, 'documentSaving' ), 10, 2 );
 		add_action( 'elementor/document/after_save', array( $this, 'documentSaved' ), 10, 2 );
 	}
@@ -194,9 +211,22 @@ final class Elementor {
 	}
 
 	/**
-	 * Elementor Pro's "posts-widget" route renders one element of a page for anyone who asks
-	 * for it by id. Refuse it for a page the visitor may not read, for an element (or a section
-	 * around it) the visitor may not see, and for a page that is not published.
+	 * Whether a REST route is one of Elementor's. WordPress matches routes whatever the letter
+	 * case and hands over the path as it was typed, so the comparison ignores case too.
+	 *
+	 * @param string $route Route as requested.
+	 */
+	public static function isElementorRoute( string $route ): bool {
+		return 0 === strpos( strtolower( $route ), '/elementor' );
+	}
+
+	/**
+	 * Elementor Pro renders one element of a page for anyone who asks for it by id (its
+	 * "posts-widget", "refresh-loop" and "refresh-search" routes, used by load-more buttons and
+	 * filters). Refuse any such request for a page the visitor may not read, for an element (or
+	 * a section around it) the visitor may not see, and for a page that is not published.
+	 * Decided by what the request asks for (a page and one of its elements), not by the route's
+	 * name, so a route Elementor adds later is covered too.
 	 *
 	 * @param mixed            $response Response so far.
 	 * @param mixed            $handler  Route handler.
@@ -204,18 +234,21 @@ final class Elementor {
 	 * @return mixed
 	 */
 	public function guardRenderRoute( $response, $handler, $request ) {
-		if ( is_wp_error( $response ) || ! $request instanceof \WP_REST_Request || false === strpos( $request->get_route(), '/posts-widget' ) || 0 !== strpos( $request->get_route(), '/elementor' ) ) {
+		if ( is_wp_error( $response ) || ! $request instanceof \WP_REST_Request || ! self::isElementorRoute( (string) $request->get_route() ) ) {
 			return $response;
 		}
 		$post_id = (int) $request->get_param( 'post_id' );
+		$element = $request->get_param( 'element_id' );
+		$element = is_scalar( $element ) && '' !== (string) $element ? (string) $element : $request->get_param( 'widget_id' );
+		$element = is_scalar( $element ) ? (string) $element : '';
 		$post    = $post_id ? get_post( $post_id ) : null;
-		if ( ! $post ) {
+		if ( ! $post || '' === $element ) {
 			return $response;
 		}
 		$refuse = Restrict::isGated( $post_id ) || ( ! is_post_publicly_viewable( $post ) && ! current_user_can( 'edit_post', $post_id ) );
 		if ( ! $refuse && class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->documents ) ) {
 			$document = \Elementor\Plugin::$instance->documents->get( $post_id );
-			$modes    = $document && method_exists( $document, 'get_elements_data' ) ? self::pathModes( (array) $document->get_elements_data(), (string) $request->get_param( 'element_id' ) ) : null;
+			$modes    = $document && method_exists( $document, 'get_elements_data' ) ? self::pathModes( (array) $document->get_elements_data(), $element ) : null;
 			foreach ( (array) $modes as $mode ) {
 				if ( ! self::visible( (string) $mode, is_user_logged_in(), Restrict::canView( $post_id ) ) ) {
 					$refuse = true;
@@ -271,13 +304,13 @@ final class Elementor {
 	 *
 	 * Elementor builds these controls once for all pages of a kind, so nothing here may depend
 	 * on the page: the switch starts off, and documentConfig() says how this page has it.
-	 * save_default makes the editor send the switch with every save. Without it Elementor
+	 * save_default makes the editor send both values with every save. Without it Elementor
 	 * leaves out a setting that still has its starting value.
 	 *
 	 * @param object $document Elementor document.
 	 */
 	public function documentControls( $document ): void {
-		if ( ! is_object( $document ) || ! method_exists( $document, 'get_main_id' ) || ! in_array( get_post_type( (int) $document->get_main_id() ), array( 'page', 'post' ), true ) ) {
+		if ( ! self::hasSwitch( $document ) ) {
 			return;
 		}
 		$document->start_controls_section(
@@ -302,11 +335,54 @@ final class Elementor {
 					: __( 'Only current members see this page’s content; everyone else gets a login prompt. Also hidden from search engines. The log-in, account and join pages always stay open.', 'favr-members' ),
 			)
 		);
+		$document->add_control(
+			self::PAGE_SWITCH_WAS,
+			array(
+				'type'         => \Elementor\Controls_Manager::HIDDEN,
+				'default'      => '',
+				'save_default' => true,
+			)
+		);
 		$document->end_controls_section();
 	}
 
 	/**
-	 * When the editor opens a page, show the switch as the page has it.
+	 * Whether a document is a page or a post (the only things with the switch).
+	 *
+	 * @param mixed $document Elementor document.
+	 */
+	private static function hasSwitch( $document ): bool {
+		return is_object( $document ) && method_exists( $document, 'get_main_id' ) && in_array( get_post_type( (int) $document->get_main_id() ), array( 'page', 'post' ), true );
+	}
+
+	/**
+	 * Whether a document is the page itself, as opposed to an autosave or a revision of it.
+	 * (Elementor keeps a person's unpublished changes to a published page in an autosave; for a
+	 * page that is not published yet it saves them into the page.)
+	 *
+	 * @param object $document Elementor document.
+	 */
+	private static function isThePage( object $document ): bool {
+		if ( ! method_exists( $document, 'get_main_id' ) || ! method_exists( $document, 'get_post' ) ) {
+			return false;
+		}
+		$saved = $document->get_post();
+		return $saved instanceof \WP_Post && (int) $saved->ID === (int) $document->get_main_id();
+	}
+
+	/**
+	 * Elementor is about to put together a document's editor configuration.
+	 *
+	 * @param mixed $document Elementor document.
+	 */
+	public function configuring( $document ): void {
+		$this->configuring = is_object( $document ) ? $document : null;
+	}
+
+	/**
+	 * When the editor opens a page, show the switch as the page has it, or as the person left
+	 * it if they changed it and have not published yet. Alongside goes how the page has it right
+	 * now and a token for this editing session; both come back with every save.
 	 *
 	 * @param mixed $config  Extra editor configuration for the document.
 	 * @param mixed $post_id The page being edited.
@@ -318,12 +394,22 @@ final class Elementor {
 		if ( ! in_array( get_post_type( $post_id ), array( 'page', 'post' ), true ) ) {
 			return $config;
 		}
+		$stands = Restrict::isMembersOnly( $post_id );
+		$shown  = $stands;
+		$source = $this->configuring;
+		if ( $source && method_exists( $source, 'get_main_id' ) && (int) $source->get_main_id() === $post_id && ! self::isThePage( $source ) && method_exists( $source, 'get_post' ) && $source->get_post() instanceof \WP_Post ) {
+			$waiting = get_post_meta( (int) $source->get_post()->ID, self::PAGE_SETTINGS, true );
+			if ( is_array( $waiting ) && array_key_exists( self::PAGE_SWITCH, $waiting ) ) {
+				$shown = Restrict::flagged( $waiting[ self::PAGE_SWITCH ] );
+			}
+		}
 		$settings = isset( $config['settings'] ) && is_array( $config['settings'] ) ? $config['settings'] : array();
 		$values   = isset( $settings['settings'] ) && is_array( $settings['settings'] ) ? $settings['settings'] : array();
 
-		$values[ self::PAGE_SWITCH ] = Restrict::isMembersOnly( $post_id ) ? '1' : '';
-		$settings['settings']        = $values;
-		$config['settings']          = $settings;
+		$values[ self::PAGE_SWITCH ]     = $shown ? '1' : '';
+		$values[ self::PAGE_SWITCH_WAS ] = ( $stands ? '1' : '' ) . '|' . wp_generate_password( 16, false );
+		$settings['settings']            = $values;
+		$config['settings']              = $settings;
 		return $config;
 	}
 
@@ -338,8 +424,47 @@ final class Elementor {
 	}
 
 	/**
-	 * A page is being saved: take the switch out of what Elementor is about to store, and
-	 * remember what it said until the save has gone through.
+	 * How the switch stood when the editor opened, as the editor sends it back: "1|token" or
+	 * "|token". Null when it was not sent at all (a tool, not the editor). An empty value is the
+	 * control's starting value, which is what Elementor resets it to when a revision is shown.
+	 *
+	 * @param mixed $raw Value sent.
+	 * @return array{0: bool|null, 1: string} How it stood, and the editing session's token.
+	 */
+	public static function baseline( $raw ): array {
+		if ( null === $raw ) {
+			return array( null, '' );
+		}
+		$parts = explode( '|', is_string( $raw ) ? $raw : '', 2 );
+		return array( Restrict::flagged( $parts[0] ), substr( (string) preg_replace( '/[^A-Za-z0-9]/', '', $parts[1] ?? '' ), 0, 32 ) );
+	}
+
+	/**
+	 * What a save does to the switch: on (true), off (false), or nothing (null).
+	 *
+	 * The editor sends the switch with every save, so a save only counts as a change when the
+	 * switch differs from how it stood: as the editor found it, or as this editing session last
+	 * left it. That way a tab left open, or a switch Elementor reset on its own (looking at a
+	 * revision does that), never undoes a page's protection.
+	 *
+	 * @param bool|null $says    What the save says (null: nothing).
+	 * @param bool|null $was     How the switch stood when the editor opened (null: not said).
+	 * @param bool|null $applied What this editing session last did to it (null: nothing yet).
+	 */
+	public static function change( ?bool $says, ?bool $was, ?bool $applied ): ?bool {
+		if ( null === $says ) {
+			return null;
+		}
+		if ( null === $was ) {
+			return $says;
+		}
+		return ( $applied ?? $was ) === $says ? null : $says;
+	}
+
+	/**
+	 * A page is being saved: take what belongs to the switch out of what Elementor is about to
+	 * store, and remember what it said until the save has gone through. An autosave of a
+	 * published page keeps the switch itself, as the person's unpublished change.
 	 *
 	 * @param mixed  $data     Data being saved.
 	 * @param object $document Document.
@@ -349,38 +474,65 @@ final class Elementor {
 		if ( ! is_array( $data ) || ! is_object( $document ) || ! isset( $data['settings'] ) || ! is_array( $data['settings'] ) ) {
 			return $data;
 		}
+		$this->switched ??= new \WeakMap();
+		unset( $this->switched[ $document ] );
 		$says = self::switchIn( $data['settings'] );
-		if ( null !== $says ) {
-			$this->switched[ spl_object_id( $document ) ] = $says;
+		$was  = self::baseline( $data['settings'][ self::PAGE_SWITCH_WAS ] ?? null );
+		unset( $data['settings'][ self::PAGE_SWITCH_WAS ] );
+		if ( ! self::hasSwitch( $document ) || self::isThePage( $document ) ) {
 			unset( $data['settings'][ self::PAGE_SWITCH ] );
+		}
+		if ( null !== $says && self::hasSwitch( $document ) ) {
+			$this->switched[ $document ] = array( $says, $was[0], $was[1] );
 		}
 		return $data;
 	}
 
 	/**
-	 * A save went through: if it said something about the switch, and it was the page itself that
-	 * was saved (not an autosave of changes nobody has published yet), set the page flag.
+	 * A save went through. If it was the page itself that was saved and the person changed the
+	 * switch (see change()), set the page flag.
 	 *
 	 * @param object $document Document.
 	 */
 	public function documentSaved( $document ): void {
-		if ( ! is_object( $document ) || ! isset( $this->switched[ spl_object_id( $document ) ] ) ) {
+		if ( ! is_object( $document ) || ! $this->switched || ! isset( $this->switched[ $document ] ) ) {
 			return;
 		}
-		$on = $this->switched[ spl_object_id( $document ) ];
-		unset( $this->switched[ spl_object_id( $document ) ] );
-		if ( ! method_exists( $document, 'get_main_id' ) || ! method_exists( $document, 'get_post' ) ) {
+		list( $says, $was, $token ) = $this->switched[ $document ];
+		unset( $this->switched[ $document ] );
+		if ( ! self::isThePage( $document ) ) {
 			return;
 		}
 		$post_id = (int) $document->get_main_id();
-		$saved   = $document->get_post();
-		if ( ! $saved instanceof \WP_Post || (int) $saved->ID !== $post_id || ! in_array( $saved->post_type, array( 'page', 'post' ), true ) || ! current_user_can( 'edit_post', $post_id ) ) {
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
-		if ( $on ) {
+		$session = '' !== $token ? get_transient( ID::SWITCH_SESSION . $token ) : false;
+		$change  = self::change( $says, $was, in_array( $session, array( 'on', 'off' ), true ) ? 'on' === $session : null );
+		if ( null === $change ) {
+			return;
+		}
+		if ( $change ) {
 			update_post_meta( $post_id, ID::PAGE_META_GATED, true );
 		} else {
 			delete_post_meta( $post_id, ID::PAGE_META_GATED );
+		}
+		if ( '' !== $token ) {
+			set_transient( ID::SWITCH_SESSION . $token, $change ? 'on' : 'off', DAY_IN_SECONDS );
+		}
+	}
+
+	/**
+	 * "Save as template" copies a page's text into Elementor's template library, which visitors
+	 * can list and search. A copy of a members-only page is members-only too.
+	 *
+	 * @param mixed $template_id   The new template.
+	 * @param mixed $template_data What it was saved from.
+	 */
+	public function templateSaved( $template_id, $template_data = array() ): void {
+		$from = is_array( $template_data ) && isset( $template_data['post_id'] ) ? (int) $template_data['post_id'] : 0;
+		if ( (int) $template_id > 0 && $from > 0 && Restrict::isMembersOnly( $from ) ) {
+			update_post_meta( (int) $template_id, ID::PAGE_META_GATED, true );
 		}
 	}
 

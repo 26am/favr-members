@@ -63,6 +63,7 @@ $people = array(
 	'an applicant'         => $person( 'gating_pending', ID::ROLE_PERSON ),
 	'an approved member who has not paid' => $person( 'gating_waiting', ID::ROLE_PERSON ),
 	'an author of other posts' => $person( 'gating_author', 'author' ),
+	'a contributor'        => $person( 'gating_contributor', 'contributor' ),
 	'a current member'     => $person( 'gating_member', ID::ROLE_PERSON ),
 	'an editor'            => $person( 'gating_editor', 'editor' ),
 );
@@ -104,6 +105,9 @@ $hidden = $post( array( 'post_title' => 'Gating members post', 'post_content' =>
 $auto   = $post( array( 'post_title' => 'Gating members post without an excerpt', 'post_content' => '<!-- wp:paragraph --><p>Hidden body ' . $mark( 'autobody' ) . ' with enough words after it for WordPress to make an excerpt of its own.</p><!-- /wp:paragraph -->' ), true );
 $page   = $post( array( 'post_type' => 'page', 'post_title' => 'Gating members page', 'post_content' => '<!-- wp:paragraph --><p>Hidden page ' . $mark( 'page' ) . '.</p><!-- /wp:paragraph -->' ), true );
 $plain  = $post( array( 'post_title' => 'Gating public post without an excerpt', 'post_content' => '<!-- wp:paragraph --><p>Public body ' . $mark( 'plainbody' ) . ' with enough words after it for WordPress to make an excerpt of its own.</p><!-- /wp:paragraph -->' ), false );
+// Members-only posts written by people who are not members themselves: an Author and a Contributor.
+$mine  = $post( array( 'post_title' => 'Gating members post by the author', 'post_author' => $people['an author of other posts'], 'post_content' => '<!-- wp:paragraph --><p>Hidden body ' . $mark( 'minebody' ) . '.</p><!-- /wp:paragraph -->' ), true );
+$theirs = $post( array( 'post_title' => 'Gating members post by the contributor', 'post_author' => $people['a contributor'], 'post_content' => '<!-- wp:paragraph --><p>Hidden body ' . $mark( 'theirsbody' ) . '.</p><!-- /wp:paragraph -->' ), true );
 wp_insert_comment( array( 'comment_post_ID' => $hidden, 'comment_author' => 'A member', 'comment_author_email' => 'm@example.test', 'comment_content' => 'Hidden comment ' . $mark( 'comment' ), 'comment_approved' => 1 ) );
 $built  = 0;
 if ( class_exists( '\Elementor\Plugin' ) ) {
@@ -358,6 +362,15 @@ $check( 'a title word plus a hidden word does not', array() === $as( $visitor, s
 $check( 'a member finds it by the hidden text', array( $hidden ) === $as( $people['a current member'], static fn(): array => $found( $mark( 'body' ) ) ) );
 $check( 'so does an editor', array( $hidden ) === $as( $people['an editor'], static fn(): array => $found( $mark( 'body' ) ) ) );
 $check( 'searching public posts is unchanged', 1 === count( (array) $as( $visitor, static fn(): array => ( new WP_Query( array( 's' => $mark( 'publicbody' ), 'fields' => 'ids' ) ) )->posts ) ) );
+// Excluding a word ("-word") must be decided by the title as well, or it says what the hidden text holds.
+$check( 'excluding a word that is only in the hidden text does not drop the post', in_array( $hidden, $as( $visitor, static fn(): array => $found( 'Gating members -' . $mark( 'body' ) ) ), true ) );
+$check( 'nor does excluding a word from the hidden excerpt, or a phrase', in_array( $hidden, $as( $visitor, static fn(): array => $found( 'Gating members -' . $mark( 'excerpt' ) ) ), true ) && in_array( $hidden, $as( $lapsed, static fn(): array => $found( 'Gating members "-Hidden body"' ) ), true ) );
+$check( 'excluding a word of the title does drop it', ! in_array( $hidden, $as( $visitor, static fn(): array => $found( 'Gating -members' ) ), true ) );
+$public = static fn( string $words ): bool => in_array( $open, array_map( 'intval', (array) $as( $visitor, static fn(): array => ( new WP_Query( array( 's' => $words, 'post_type' => 'post', 'fields' => 'ids' ) ) )->posts ) ), true );
+$check( 'excluding words still works on public posts, by their text', $public( 'Gating public' ) && ! $public( 'Gating public -' . $mark( 'publicbody' ) ) && $public( 'Gating public -zqnothere' ) );
+$own = static fn( string $who, int $id, string $word ): bool => in_array( $id, array_map( 'intval', (array) $as( $people[ $who ], static fn(): array => ( new WP_Query( array( 's' => $word, 'post_type' => 'post', 'fields' => 'ids' ) ) )->posts ) ), true );
+$check( 'the author of a members-only post finds it by its text', $own( 'an author of other posts', $mine, $mark( 'minebody' ) ) );
+$check( 'but not other people\'s, and a visitor finds neither', ! $own( 'an author of other posts', $hidden, $mark( 'body' ) ) && ! $own( 'a visitor', $mine, $mark( 'minebody' ) ) );
 $rest_search = (string) $as( $visitor, static fn(): string => $rest( '/wp/v2/posts', array( 'search' => $mark( 'body' ) ) ) . $rest( '/wp/v2/search', array( 'search' => $mark( 'autobody' ) ) ) );
 $check( 'the REST API search gives nothing away either', false === strpos( $rest_search, 'Gating members post' ), $rest_search );
 
@@ -390,6 +403,26 @@ $check( 'and there is none on a public post', false === strpos( (string) $as( $p
 
 // --- Around a members-only post ------------------------------------------------------------------
 echo "Around a members-only post\n";
+$reads = static fn( string $who, int $id, string $word ): bool => false !== strpos( (string) $as( $people[ $who ], static fn(): string => $loop( array( 'p' => $id ), static function (): void { the_content(); } ) ), $word );
+$check( 'the person who wrote a members-only post can read it, member or not (Author)', $reads( 'an author of other posts', $mine, $mark( 'minebody' ) ) );
+$check( 'the same for a Contributor, who can no longer edit it once it is published', $reads( 'a contributor', $theirs, $mark( 'theirsbody' ) ) );
+$check( 'neither can read the other\'s, and a visitor reads neither', ! $reads( 'a contributor', $mine, $mark( 'minebody' ) ) && ! $reads( 'an author of other posts', $theirs, $mark( 'theirsbody' ) ) && ! $reads( 'a visitor', $mine, $mark( 'minebody' ) ) );
+// An older saved version of a page is as members-only as the page.
+if ( $built ) {
+	$as(
+		$owner,
+		static function () use ( $built ): void {
+			$document = \Elementor\Plugin::$instance->documents->get( $built, false );
+			$document->save( array( 'elements' => $document->get_elements_raw_data(), 'settings' => array( 'post_status' => 'publish' ) ) );
+		}
+	);
+	$old = array_keys( wp_get_post_revisions( $built ) );
+	$out = '';
+	foreach ( $old as $revision ) {
+		$out .= (string) $as( $visitor, static fn(): string => do_shortcode( '[elementor-template id="' . $revision . '"]' ) . (string) \Elementor\Plugin::$instance->frontend->get_builder_content( $revision ) );
+	}
+	$check( 'older saved versions of a members-only page are members-only too (' . count( $old ) . ' checked)', array() !== $old && false === strpos( $out, $mark( 'built' ) ) && \FavrMembers\Frontend\Restrict::isMembersOnly( (int) $old[0] ) );
+}
 // A list of other posts on a members-only page (a Latest Posts block in the footer, "related posts")
 // asks for their excerpts while the page's own post is the current one.
 $near = (string) $as( $visitor, static fn(): string => $loop( array( 'p' => $hidden ), static function () use ( $plain, $auto ): void { echo esc_html( get_the_excerpt( $plain ) . ' | ' . get_the_excerpt( $auto ) ); } ) );
@@ -415,11 +448,20 @@ $check( 'an empty value from another plugin passing through WordPress\'s filters
 // A copy handed out with its text withheld must never be saved over the real post.
 $copy               = clone get_post( $hidden );
 $copy->post_content = 'This content is for members.';
-$copy->post_excerpt = '';
+$copy->post_excerpt = 'This content is for members.';
 $copy->{\FavrMembers\Frontend\Restrict::WITHHELD} = true;
 wp_update_post( $copy );
 clean_post_cache( $hidden );
-$check( 'a withheld copy saved by mistake does not overwrite the real text', false !== strpos( (string) get_post_field( 'post_content', $hidden, 'raw' ), $mark( 'body' ) ) && false !== strpos( (string) get_post_field( 'post_excerpt', $hidden, 'raw' ), $mark( 'excerpt' ) ) );
+$check( 'a withheld copy saved whole by mistake does not overwrite the real text', false !== strpos( (string) get_post_field( 'post_content', $hidden, 'raw' ), $mark( 'body' ) ) && false !== strpos( (string) get_post_field( 'post_excerpt', $hidden, 'raw' ), $mark( 'excerpt' ) ) );
+wp_update_post( array( 'ID' => $hidden, 'post_content' => $copy->post_content, 'post_excerpt' => $copy->post_excerpt ) );
+clean_post_cache( $hidden );
+$check( 'nor does saving only the text taken from such a copy', false !== strpos( (string) get_post_field( 'post_content', $hidden, 'raw' ), $mark( 'body' ) ) && false !== strpos( (string) get_post_field( 'post_excerpt', $hidden, 'raw' ), $mark( 'excerpt' ) ) );
+$copy               = clone get_post( $theirs );
+$copy->post_content = 'Rewritten on purpose ' . $mark( 'rewritten' );
+$copy->{\FavrMembers\Frontend\Restrict::WITHHELD} = true;
+wp_update_post( $copy );
+clean_post_cache( $theirs );
+$check( 'text written on purpose is saved, even on a copy', false !== strpos( (string) get_post_field( 'post_content', $theirs, 'raw' ), $mark( 'rewritten' ) ) );
 
 // --- What the members box says -----------------------------------------------------------------
 echo "What the members box tells each person\n";
@@ -519,7 +561,29 @@ if ( 200 !== $home['code'] || false === strpos( $home['body'], $mark( 'publicbod
 		$seen = $leaks( $got['body'] );
 		$check( $what . ', read by anyone: nothing hidden', array() === $seen, 'http ' . $got['code'] . ' leaked ' . implode( ', ', $seen ) );
 	}
+	if ( $grid ) {
+		$got = $fetch( get_permalink( $grid ) );
+		$check( 'on a Loop Grid card a members-only post says it is for members where its excerpt would be', false !== strpos( $got['body'], 'This content is for members.' ) );
+		// Elementor Pro also re-renders a Loop Grid on request. On a public page that must still work;
+		// on a members-only page it must not, however the address is spelled.
+		$post_json = static function ( string $url, array $body ): array {
+			$response = wp_remote_post( $url, array( 'timeout' => 45, 'headers' => array( 'Content-Type' => 'application/json' ), 'body' => wp_json_encode( $body ) ) );
+			return array( 'code' => is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response ), 'body' => is_wp_error( $response ) ? '' : (string) wp_remote_retrieve_body( $response ) );
+		};
+		$got = $post_json( rest_url( 'elementor-pro/v1/refresh-loop' ), array( 'post_id' => $grid, 'widget_id' => 'gtg2002', 'widget_filters' => (object) array() ) );
+		$check( 'a public Loop Grid can still be re-rendered on request, with nothing hidden in it', 200 === $got['code'] && false !== strpos( $got['body'], 'Gating' ) && array() === $leaks( $got['body'] ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 160 ) );
+		update_post_meta( $grid, ID::PAGE_META_GATED, true );
+		$got = $post_json( rest_url( 'elementor-pro/v1/refresh-loop' ), array( 'post_id' => $grid, 'widget_id' => 'gtg2002', 'widget_filters' => (object) array() ) );
+		$check( 'the same Loop Grid on a members-only page is refused', in_array( $got['code'], array( 401, 403 ), true ) && false === strpos( $got['body'], 'Gating members post' ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 160 ) );
+		$got = $post_json( rest_url( 'ELEMENTOR-PRO/V1/Refresh-Loop' ), array( 'post_id' => $grid, 'widget_id' => 'gtg2002', 'widget_filters' => (object) array() ) );
+		$check( 'and refused when the address is typed in capitals', in_array( $got['code'], array( 401, 403 ), true ) && false === strpos( $got['body'], 'Gating members post' ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 160 ) );
+		delete_post_meta( $grid, ID::PAGE_META_GATED );
+	}
 	if ( $built && defined( 'ELEMENTOR_PRO_VERSION' ) ) {
+		foreach ( array( 'elementor-pro/v1/Posts-Widget', 'ELEMENTOR-PRO/V1/posts-widget' ) as $spelling ) {
+			$got = $fetch( add_query_arg( array( 'post_id' => $built, 'element_id' => 'gtg0002' ), rest_url( $spelling ) ) );
+			$check( 'Elementor Pro\'s render-one-element address refuses a members-only page however it is spelled (' . $spelling . ')', array() === $leaks( $got['body'] ) && in_array( $got['code'], array( 401, 403 ), true ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 120 ) );
+		}
 		$route = rest_url( 'elementor-pro/v1/posts-widget' );
 		$got   = $fetch( add_query_arg( array( 'post_id' => $built, 'element_id' => 'gtg0002' ), $route ) );
 		$check( 'Elementor Pro\'s render-one-element address refuses a members-only page', array() === $leaks( $got['body'] ) && in_array( $got['code'], array( 401, 403 ), true ), 'http ' . $got['code'] . ' ' . substr( $got['body'], 0, 120 ) );
@@ -557,6 +621,69 @@ if ( $built ) {
 	$check( 'switching it on and publishing makes it members-only', $is() );
 	$kept = get_post_meta( $built, '_elementor_page_settings', true );
 	$check( 'the switch has one home: Elementor keeps no copy of its own that could go stale', ! is_array( $kept ) || ! array_key_exists( 'favr_members_only', $kept ) );
+	// The real editor sends the switch with every save, together with how it stood when the page
+	// was opened and a token for the editing session.
+	$opened = static fn(): string => (string) ( ( (array) apply_filters( 'elementor/document/config', array(), $built ) )['settings']['settings']['favr_members_only_was'] ?? 'not said' );
+	$was    = $opened();
+	$check( 'the editor is told how the switch stands when it opens', 0 === strpos( $was, '1|' ) && strlen( $was ) > 8, $was );
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '', 'favr_members_only_was' => '' ) );
+	$check( 'looking at a revision resets the switch in the editor: publishing after that leaves a members-only page members-only', $is() );
+	delete_post_meta( $built, ID::PAGE_META_GATED );
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '1', 'favr_members_only_was' => $was ) );
+	$check( 'a tab left open while the page was made public elsewhere does not switch it back on', ! $is() );
+	update_post_meta( $built, ID::PAGE_META_GATED, true );
+	$was = $opened();
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '', 'favr_members_only_was' => $was ) );
+	$check( 'switching it off in the editor and publishing makes it public', ! $is() );
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '', 'favr_members_only_was' => $was ) );
+	$check( 'publishing again in the same session leaves it public', ! $is() );
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '1', 'favr_members_only_was' => $was ) );
+	$check( 'switching it back on in the same session and publishing makes it members-only again', $is() );
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '', 'favr_members_only_was' => $was ) );
+	$check( 'and off again', ! $is() );
+	// An unpublished change waits in the person's autosave, like their other unpublished changes.
+	$was = $opened();
+	// Elementor goes back to a person's autosave when it is newer than the page.
+	$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->posts, array( 'post_modified' => gmdate( 'Y-m-d H:i:s', time() - 300 ), 'post_modified_gmt' => gmdate( 'Y-m-d H:i:s', time() - 300 ) ), array( 'ID' => $built ) ); // phpcs:ignore WordPress.DB
+	clean_post_cache( $built );
+	$save( array( 'post_status' => 'autosave', 'favr_members_only' => '1', 'favr_members_only_was' => $was ), true );
+	$pending = (array) $as(
+		$owner,
+		static function () use ( $built ): array {
+			$autosave = \Elementor\Plugin::$instance->documents->get( $built, false )->get_autosave();
+			do_action( 'elementor/document/before_get_config', $autosave );
+			return (array) ( ( (array) apply_filters( 'elementor/document/config', array(), $built ) )['settings']['settings'] ?? array() );
+		}
+	);
+	$check( 'a switch turned on but not published yet is still on when the editor comes back to the page (Site Settings, reopening)', ! $is() && '1' === ( $pending['favr_members_only'] ?? null ) && 0 === strpos( (string) ( $pending['favr_members_only_was'] ?? 'x' ), '|' ), wp_json_encode( $pending ) );
+	$save( array( 'post_status' => 'publish', 'favr_members_only' => '1', 'favr_members_only_was' => (string) ( $pending['favr_members_only_was'] ?? '' ) ) );
+	$check( 'and publishing then makes the page members-only', $is() );
+	$kept = get_post_meta( $built, '_elementor_page_settings', true );
+	$check( 'the page itself never stores the switch or how it stood', ! is_array( $kept ) || ( ! array_key_exists( 'favr_members_only', $kept ) && ! array_key_exists( 'favr_members_only_was', $kept ) ), wp_json_encode( $kept ) );
+	// "Save as template" copies the page's text into Elementor's template library.
+	$template = static function ( int $from ) use ( $as, $owner, &$made ): int {
+		$saved = $as(
+			$owner,
+			static function () use ( $from ) {
+				$elements = \Elementor\Plugin::$instance->documents->get( $from, false )->get_elements_raw_data();
+				return \Elementor\Plugin::$instance->templates_manager->save_template( array( 'post_id' => $from, 'source' => 'local', 'content' => wp_json_encode( $elements ), 'type' => 'page', 'title' => 'Gating saved template ' . $from ) );
+			}
+		);
+		$id = is_array( $saved ) ? (int) ( $saved['template_id'] ?? 0 ) : 0;
+		if ( $id ) {
+			$made['posts'][] = $id;
+		}
+		return $id;
+	};
+	$copy_of_hidden = $template( $built );
+	$check( 'a template saved from a members-only page is members-only too', $copy_of_hidden > 0 && \FavrMembers\Frontend\Restrict::isMembersOnly( $copy_of_hidden ), 'template ' . $copy_of_hidden );
+	if ( $grid ) {
+		$copy_of_public = $template( $grid );
+		$check( 'a template saved from a public page is not', $copy_of_public > 0 && ! \FavrMembers\Frontend\Restrict::isMembersOnly( $copy_of_public ) );
+	}
+	$library = wp_remote_get( add_query_arg( array( 'feed' => 'rss2', 'post_type' => 'elementor_library' ), home_url( '/' ) ), array( 'timeout' => 45 ) );
+	$library = is_wp_error( $library ) ? '' : (string) wp_remote_retrieve_body( $library );
+	$check( 'so the template library\'s feed does not hand out the hidden text', false !== strpos( $library, 'Gating saved template' ) && false === strpos( $library, $mark( 'built' ) ), false === strpos( $library, 'Gating saved template' ) ? 'the feed does not list the template at all' : 'leaked' );
 	$control = (array) $as( $owner, static fn() => \Elementor\Plugin::$instance->documents->get( $built, false )->get_controls( 'favr_members_only' ) );
 	$check( 'the editor is told to send the switch with every save', '' === ( $control['default'] ?? null ) && ! empty( $control['save_default'] ), wp_json_encode( array_intersect_key( $control, array( 'default' => 1, 'save_default' => 1 ) ) ) );
 	$shown = static fn(): string => (string) ( ( (array) apply_filters( 'elementor/document/config', array(), $built ) )['settings']['settings']['favr_members_only'] ?? 'not said' );

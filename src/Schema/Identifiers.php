@@ -32,6 +32,7 @@ final class Identifiers {
 	public const NONCE_FRONT     = 'favr_members_front';
 	public const CRON_LAPSE      = 'favr_members_daily';
 	public const PAGE_META_GATED = '_favr_members_only';
+	public const SWITCH_SESSION  = 'favr_members_switch_'; // Transient prefix: what an Elementor editing session last did to the switch.
 	public const BLOCK_GATE      = 'favr-members/members-only';
 
 	/** Business post type from Favr Directory (optional integration). */

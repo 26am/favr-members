@@ -77,4 +77,42 @@ final class ElementorVisibilityTest extends TestCase {
 		$this->assertFalse( Elementor::switchIn( array( 'favr_members_only' => null ) ) );
 		$this->assertFalse( Elementor::switchIn( array( 'favr_members_only' => '0' ) ) );
 	}
+
+	public function test_a_save_changes_the_switch_only_when_the_person_changed_it(): void {
+		// A tool that says it outright, with no word on how the switch stood: do as it says.
+		$this->assertTrue( Elementor::change( true, null, null ) );
+		$this->assertFalse( Elementor::change( false, null, null ) );
+		$this->assertNull( Elementor::change( null, true, null ) );
+		// The editor sends the switch with every save, and how it stood when the page was opened.
+		$this->assertNull( Elementor::change( true, true, null ), 'On when opened and still on: a tab left open must not undo a change made elsewhere.' );
+		$this->assertNull( Elementor::change( false, false, null ), 'Off and off: this is also what looking at a revision leaves behind on a protected page.' );
+		$this->assertTrue( Elementor::change( true, false, null ) );
+		$this->assertFalse( Elementor::change( false, true, null ) );
+		// Later in the same session, what it last did is how the switch stands.
+		$this->assertFalse( Elementor::change( false, false, true ), 'Switched on and published, then off again.' );
+		$this->assertNull( Elementor::change( true, false, true ) );
+		$this->assertTrue( Elementor::change( true, true, false ), 'Switched off and published, then on again.' );
+	}
+
+	public function test_how_the_switch_stood_when_the_editor_opened(): void {
+		$this->assertSame( array( null, '' ), Elementor::baseline( null ), 'Not sent at all.' );
+		$this->assertSame( array( true, 'abc123XYZ' ), Elementor::baseline( '1|abc123XYZ' ) );
+		$this->assertSame( array( false, 'abc123XYZ' ), Elementor::baseline( '|abc123XYZ' ) );
+		// The control's starting value, which is what Elementor resets it to when a revision is shown.
+		$this->assertSame( array( false, '' ), Elementor::baseline( '' ) );
+		$this->assertSame( array( true, '' ), Elementor::baseline( '1' ) );
+		$this->assertSame( array( false, 'ab' ), Elementor::baseline( '|a<b>;' ), 'Only letters and digits make a session token.' );
+		$this->assertSame( array( false, '' ), Elementor::baseline( array( 'junk' ) ) );
+	}
+
+	public function test_which_addresses_are_elementor_rendering_one_element_on_request(): void {
+		$this->assertTrue( Elementor::isElementorRoute( '/elementor-pro/v1/posts-widget' ) );
+		// WordPress matches routes whatever the letter case, so the guard must too.
+		$this->assertTrue( Elementor::isElementorRoute( '/ELEMENTOR-PRO/V1/Posts-Widget' ) );
+		$this->assertTrue( Elementor::isElementorRoute( '/elementor-pro/v1/refresh-loop' ) );
+		$this->assertTrue( Elementor::isElementorRoute( '/elementor/v1/anything' ) );
+		$this->assertFalse( Elementor::isElementorRoute( '/wp/v2/posts' ) );
+		$this->assertFalse( Elementor::isElementorRoute( '/favr/elementor' ) );
+		$this->assertFalse( Elementor::isElementorRoute( '' ) );
+	}
 }

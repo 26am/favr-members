@@ -85,7 +85,7 @@
 				label: __( 'Members only', 'favr-members' ),
 				help: 'post' === postType
 					? __( 'Only current members can read this post; everyone else gets a login prompt. Its title still shows in lists. Also hidden from search engines.', 'favr-members' )
-					: __( 'Only current members see this page’s content; everyone else gets a login prompt. Also hidden from search engines.', 'favr-members' ),
+					: __( 'Only current members see this page’s content; everyone else gets a login prompt. Also hidden from search engines. The log-in, account and join pages always stay open.', 'favr-members' ),
 				checked: !! meta._favr_members_only,
 				onChange: function ( v ) {
 					setMeta( Object.assign( {}, meta, { _favr_members_only: v } ) );

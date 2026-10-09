@@ -25,13 +25,14 @@ final class RestrictTest extends TestCase {
 		$this->assertSame( '', Restrict::wordingFor( '' ) );
 	}
 
-	public function test_a_search_only_matches_members_only_posts_by_title_words_the_visitor_typed(): void {
-		$this->assertSame( array( 'board', 'minutes' ), Restrict::titleTerms( array( 'board', 'minutes' ), '-' ) );
-		// Words the searcher excluded are not something to look for.
-		$this->assertSame( array( 'board' ), Restrict::titleTerms( array( 'board', '-minutes' ), '-' ) );
-		$this->assertSame( array( 'board', '-minutes' ), Restrict::titleTerms( array( 'board', '-minutes' ), '' ), 'With exclusions switched off, a leading dash is part of the word.' );
-		$this->assertSame( array(), Restrict::titleTerms( array( '-minutes' ), '-' ) );
-		$this->assertSame( array( 'ok' ), Restrict::titleTerms( array( '', 'ok', array( 'junk' ), null ), '-' ) );
+	public function test_a_search_matches_a_members_only_post_by_its_title_alone(): void {
+		$this->assertSame( array( 'has' => array( 'board', 'minutes' ), 'not' => array() ), Restrict::titleSearch( array( 'board', 'minutes' ), '-' ) );
+		// A word the searcher excluded is kept out by the title too, never by the hidden text:
+		// "board -budget" must not say whether the hidden text mentions a budget.
+		$this->assertSame( array( 'has' => array( 'board' ), 'not' => array( 'minutes' ) ), Restrict::titleSearch( array( 'board', '-minutes' ), '-' ) );
+		$this->assertSame( array( 'has' => array( 'board', '-minutes' ), 'not' => array() ), Restrict::titleSearch( array( 'board', '-minutes' ), '' ), 'With exclusions switched off, a leading dash is part of the word.' );
+		$this->assertSame( array( 'has' => array(), 'not' => array( 'minutes' ) ), Restrict::titleSearch( array( '-minutes' ), '-' ) );
+		$this->assertSame( array( 'has' => array( 'ok' ), 'not' => array() ), Restrict::titleSearch( array( '', 'ok', array( 'junk' ), null, '-' ), '-' ) );
 	}
 
 	public function test_which_stored_values_mean_members_only(): void {
