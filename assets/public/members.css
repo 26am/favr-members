@@ -397,3 +397,13 @@
 .favr-m-segmented {
 	align-self: flex-start;
 }
+
+/* Staff reading a members-only page: a quiet reminder that visitors do not see this. */
+.favr-m.favr-m-staffnote {
+	margin: 0 0 1.25em;
+	padding: 0.6em 0.9em;
+	border: 1px dashed currentColor;
+	border-radius: 6px;
+	font-size: 0.9em;
+	opacity: 0.85;
+}
