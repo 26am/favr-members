@@ -60,6 +60,7 @@
 				return null;
 			}
 		} );
+	} );
 
 	// "Members only" toggle in the page/post sidebar.
 	var PluginPanel = ( wp.editor && wp.editor.PluginDocumentSettingPanel ) || ( wp.editPost && wp.editPost.PluginDocumentSettingPanel );
@@ -82,7 +83,9 @@
 			{ name: 'favr-members-gate', title: __( 'Member access', 'favr-members' ), icon: 'lock' },
 			el( C.ToggleControl, {
 				label: __( 'Members only', 'favr-members' ),
-				help: __( 'Only current members can see this page’s content. It’s also hidden from search engines.', 'favr-members' ),
+				help: 'post' === postType
+					? __( 'Only current members can read this post; everyone else gets a login prompt. Its title still shows in lists. Also hidden from search engines.', 'favr-members' )
+					: __( 'Only current members see this page’s content; everyone else gets a login prompt. Also hidden from search engines.', 'favr-members' ),
 				checked: !! meta._favr_members_only,
 				onChange: function ( v ) {
 					setMeta( Object.assign( {}, meta, { _favr_members_only: v } ) );
@@ -92,6 +95,4 @@
 	}
 
 	wp.plugins.registerPlugin( 'favr-members-gate', { render: GatePanel } );
-
-	} );
 } )( window.wp );

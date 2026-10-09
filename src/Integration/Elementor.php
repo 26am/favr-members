@@ -295,7 +295,11 @@ final class Elementor {
 				'return_value' => '1',
 				'default'      => '',
 				'save_default' => true,
-				'description'  => __( 'Only current members see this page’s content; everyone else gets a login prompt. Also hidden from search engines. The log-in, account and join pages always stay open.', 'favr-members' ),
+				// Elementor builds one set of controls per kind of document, so the wording may
+				// depend on page or post, never on which page.
+				'description'  => 'post' === get_post_type( (int) $document->get_main_id() )
+					? __( 'Only current members can read this post; everyone else gets a login prompt. Its title still shows in lists. Also hidden from search engines.', 'favr-members' )
+					: __( 'Only current members see this page’s content; everyone else gets a login prompt. Also hidden from search engines. The log-in, account and join pages always stay open.', 'favr-members' ),
 			)
 		);
 		$document->end_controls_section();
