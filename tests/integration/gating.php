@@ -28,10 +28,9 @@ require_once ABSPATH . 'wp-admin/includes/user.php';
 foreach ( get_users( array( 'search' => 'gating_*', 'search_columns' => array( 'user_login' ), 'fields' => 'ID' ) ) as $favr_gate_left ) {
 	wp_delete_user( (int) $favr_gate_left );
 }
-foreach ( get_posts( array( 'post_type' => array( 'post', 'page', ID::POST_TYPE ), 'post_status' => 'any', 'posts_per_page' => 200, 'fields' => 'ids', 'suppress_filters' => true ) ) as $favr_gate_left ) {
-	if ( 0 === strpos( (string) get_post_field( 'post_title', $favr_gate_left, 'raw' ), 'Gating ' ) ) {
-		wp_delete_post( (int) $favr_gate_left, true );
-	}
+// (Asked of the database by title: a site can hold more posts than any one query page.)
+foreach ( $GLOBALS['wpdb']->get_col( "SELECT ID FROM {$GLOBALS['wpdb']->posts} WHERE post_title LIKE 'Gating %' AND post_type IN ( 'post', 'page', 'favr_member', 'elementor_library' )" ) as $favr_gate_left ) { // phpcs:ignore WordPress.DB
+	wp_delete_post( (int) $favr_gate_left, true );
 }
 $mark = static fn( string $name ): string => 'zq' . $name . 'gate';
 
