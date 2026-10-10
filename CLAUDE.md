@@ -17,7 +17,7 @@ composer lint      # WPCS, keep at 0 errors
 ```
 
 `wp eval-file tests/integration/gating.php` checks members-only pages and posts through every way
-a post's text is handed out (about 260 checks, including whole pages fetched over HTTP, an
+a post's text is handed out (about 270 checks, including whole pages fetched over HTTP, an
 Elementor page and an Elementor Pro Loop Grid). It makes its own posts and people and removes
 them, so it can run on any local site. Run it after any change to `Restrict` or `Elementor`.
 Not covered by it: page caches that serve logged-in users, Elementor's alpha Markdown
@@ -118,6 +118,18 @@ Local test site: `http://sermonator-test.local/`, with this repo symlinked to
     `get_param()`). So `askedFor()` picks no winner: every page and element named in any part
     of the request is checked, and elements are looked up through Elementor's own
     `find_element_recursive/inner_elements` filter (components keep their insides elsewhere).
+    Elements are matched by id as text, all of them (hand-written page data can repeat an id
+    or leave it out), and a page WordPress itself protects with a password is refused too.
+  - Those routes are also what Elementor Pro's filter and search widgets call, with the login
+    cookie only. WordPress treats a cookie without a nonce as a visitor in REST, so a member
+    would be refused on a members-only page: `refreshToken()` gives a signed-in person's page a
+    small script that adds the `wp_rest` nonce to those same-site requests.
+  - The "everything shows while editing" exception (`editing()`) is for the page being edited
+    by someone who may edit it, never for a page embedded in it. A members-only block or
+    shortcode belongs to the page Elementor is building (`favr_members_restricted_post`).
+  - Known limit: an Author who is not a member can still read the members-only *sections* of a
+    public page through Elementor's own template import (it hands any editor the stored data
+    of any public page). The whole-page switch is not affected.
   Decide by the document being rendered (`buildingId()`), never `get_the_ID()`: header, footer
   and loop templates render on every page.
 - **Shared code:** import from `FavrMembers\Vendor\FavrCore\…`. Never edit `vendor-prefixed/`; change

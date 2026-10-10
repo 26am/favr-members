@@ -237,6 +237,46 @@ if ( $grid ) {
 		}
 	);
 }
+// Public pages with a part for members: a section shown to current members only, and the shortcode.
+$sectioned = 0;
+$coded     = 0;
+$odd       = 0;
+$locked    = 0;
+if ( $built ) {
+	$text_in = static fn( string $id, string $html ): array => array( 'id' => $id, 'elType' => 'widget', 'widgetType' => 'text-editor', 'settings' => array( 'editor' => $html ), 'elements' => array() );
+	$build   = static function ( string $title, array $elements, array $more = array() ) use ( $post, $as, $owner ): int {
+		$id = $post( array_merge( array( 'post_type' => 'page', 'post_title' => $title, 'post_content' => '' ), $more ), false );
+		update_post_meta( $id, '_elementor_edit_mode', 'builder' );
+		$as(
+			$owner,
+			static function () use ( $id, $elements ): void {
+				\Elementor\Plugin::$instance->documents->get( $id, false )->save( array( 'elements' => $elements, 'settings' => array() ) );
+			}
+		);
+		return $id;
+	};
+	$sectioned = $build( 'Gating public page with a members section', array( array( 'id' => 'gtg6001', 'elType' => 'container', 'settings' => array( 'favr_members_visibility' => 'members' ), 'isInner' => false, 'elements' => array( $text_in( 'gtg6002', '<p>Section for members ' . $mark( 'section' ) . '.</p>' ) ) ) ) );
+	$coded     = $build( 'Gating public page with the members shortcode', array( array( 'id' => 'gtg7001', 'elType' => 'container', 'settings' => array(), 'isInner' => false, 'elements' => array( $text_in( 'gtg7002', '<p>Open part.</p>[favr_members_only]<p>Shortcode for members ' . $mark( 'coded' ) . '.</p>[/favr_members_only]' ) ) ) ) );
+	$locked    = $build( 'Gating page with a WordPress password', array( array( 'id' => 'gtg8001', 'elType' => 'container', 'settings' => array(), 'isInner' => false, 'elements' => array( $text_in( 'gtg8002', '<p>Password page.</p>' ) ) ) ), array( 'post_password' => 'gating-pass' ) );
+	// Page data no editor writes: elements without an id, with an empty id, and a number that a hidden element also carries as text.
+	$odd  = $post( array( 'post_type' => 'page', 'post_title' => 'Gating public page with odd element ids', 'post_content' => '' ), false );
+	$data = array(
+		array( 'id' => 7654321, 'elType' => 'widget', 'widgetType' => 'text-editor', 'settings' => array( 'editor' => '<p>Open twin.</p>' ), 'elements' => array() ),
+		array(
+			'id'       => 'gtg9001',
+			'elType'   => 'container',
+			'settings' => array( 'favr_members_visibility' => 'members' ),
+			'isInner'  => false,
+			'elements' => array(
+				array( 'elType' => 'widget', 'widgetType' => 'text-editor', 'settings' => array( 'editor' => '<p>No id.</p>' ), 'elements' => array() ),
+				array( 'id' => '', 'elType' => 'widget', 'widgetType' => 'text-editor', 'settings' => array( 'editor' => '<p>Empty id.</p>' ), 'elements' => array() ),
+				array( 'id' => '7654321', 'elType' => 'widget', 'widgetType' => 'text-editor', 'settings' => array( 'editor' => '<p>Hidden twin.</p>' ), 'elements' => array() ),
+			),
+		),
+	);
+	update_post_meta( $odd, '_elementor_edit_mode', 'builder' );
+	update_post_meta( $odd, '_elementor_data', wp_slash( wp_json_encode( $data ) ) );
+}
 $secrets = array( $mark( 'body' ), $mark( 'excerpt' ), $mark( 'autobody' ), $mark( 'page' ), $mark( 'comment' ), $mark( 'built' ) );
 
 // --- Ways a post's text is handed out ------------------------------------------------------------
@@ -606,7 +646,12 @@ if ( 200 !== $home['code'] || false === strpos( $home['body'], $mark( 'publicbod
 		$check( $what . ', read by anyone: nothing hidden', array() === $seen, 'http ' . $got['code'] . ' leaked ' . implode( ', ', $seen ) );
 	}
 	if ( $grid ) {
+		// Elementor Pro's filter and search widgets ask the site to re-render a list, and WordPress
+		// only believes who is asking when the request carries a token printed into the page.
+		$got = $fetch( get_permalink( $grid ), $people['a current member'] );
+		$check( 'a signed-in person\'s page gives Elementor\'s list refreshes the token that says who is asking', false !== strpos( $got['body'], 'favrMembersRefresh' ) && false !== strpos( $got['body'], 'X-WP-Nonce' ) );
 		$got = $fetch( get_permalink( $grid ) );
+		$check( 'a visitor\'s page carries no such token', false === strpos( $got['body'], 'favrMembersRefresh' ) );
 		$check( 'on a Loop Grid card a members-only post says it is for members where its excerpt would be', false !== strpos( $got['body'], 'This content is for members.' ) );
 		// Elementor Pro also re-renders a Loop Grid on request. On a public page that must still work;
 		// on a members-only page it must not, however the address is spelled.
@@ -913,6 +958,34 @@ if ( $built ) {
 		$check( 'and allowed to a member', ! is_wp_error( $answer ) );
 		remove_filter( 'elementor/utils/find_element_recursive/inner_elements', $insides, 10 );
 	}
+	// Asking Elementor's render address about a page: what the guard answers, in this process.
+	$asks = static function ( array $params, int $user_id = 0 ) use ( $as ): bool {
+		$request = new WP_REST_Request( 'GET', '/elementor-pro/v1/posts-widget' );
+		$request->set_query_params( $params );
+		return is_wp_error( $as( $user_id, static fn() => ( new \FavrMembers\Integration\Elementor() )->guardRenderRoute( null, null, $request ) ) );
+	};
+	$check( 'on a public page with a members section, a request that names no element at all is refused when an element without an id is hidden there', $asks( array( 'post_id' => (string) $odd ) ) );
+	$check( 'so is one that names an empty id', $asks( array( 'post_id' => (string) $odd, 'element_id' => '' ) ) );
+	$check( 'and one that names a number which a hidden element also carries', $asks( array( 'post_id' => (string) $odd, 'element_id' => '7654321' ) ) );
+	$check( 'a member is allowed all three', ! $asks( array( 'post_id' => (string) $odd ), $people['a current member'] ) && ! $asks( array( 'post_id' => (string) $odd, 'element_id' => '7654321' ), $people['a current member'] ) );
+	$check( 'an ordinary public page is not refused for naming no element', ! $asks( array( 'post_id' => (string) $coded ) ) && ! $asks( array( 'post_id' => (string) $coded, 'element_id' => 'gtg7002' ) ) );
+	$check( 'a page with a WordPress password is refused to a visitor who has not entered it', $asks( array( 'post_id' => (string) $locked, 'element_id' => 'gtg8002' ) ) );
+	// An Author who is not a member embeds someone else's public page in a post of their own.
+	$embeds = static function ( int $page_id, int $user_id, bool $previewing ) use ( $as, $loop, $mine ): string {
+		$kept = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( $previewing ) {
+			$_GET['elementor-preview'] = (string) $mine; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+		$out  = (string) $as( $user_id, static fn(): string => $loop( array( 'p' => $mine ), static function () use ( $page_id ): void { echo do_shortcode( '[elementor-template id="' . $page_id . '"]' ); } ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		$_GET = $kept; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return $out;
+	};
+	$author = $people['an author of other posts'];
+	$check( 'the members section of a public page embedded in an Author\'s own post stays hidden from that Author', false === strpos( $embeds( $sectioned, $author, false ), $mark( 'section' ) ) );
+	$check( 'also while they preview their own post in Elementor', false === strpos( $embeds( $sectioned, $author, true ), $mark( 'section' ) ) );
+	$check( 'the members shortcode on a public page embedded in an Author\'s own post stays hidden from that Author', false === strpos( $embeds( $coded, $author, false ), $mark( 'coded' ) ) && false !== strpos( $embeds( $coded, $author, false ), 'Open part.' ) );
+	$check( 'a member sees both through the same embed', false !== strpos( $embeds( $sectioned, $people['a current member'], false ), $mark( 'section' ) ) && false !== strpos( $embeds( $coded, $people['a current member'], false ), $mark( 'coded' ) ) );
+	$check( 'and so do staff', false !== strpos( $embeds( $sectioned, $people['an editor'], false ), $mark( 'section' ) ) && false !== strpos( $embeds( $coded, $people['an editor'], false ), $mark( 'coded' ) ) );
 	$library = wp_remote_get( add_query_arg( array( 'feed' => 'rss2', 'post_type' => 'elementor_library' ), home_url( '/' ) ), array( 'timeout' => 45 ) );
 	$library = is_wp_error( $library ) ? '' : (string) wp_remote_retrieve_body( $library );
 	$check( 'so the template library\'s feed does not hand out the hidden text', false !== strpos( $library, 'Gating saved template' ) && false === strpos( $library, $mark( 'built' ) ), false === strpos( $library, 'Gating saved template' ) ? 'the feed does not list the template at all' : 'leaked' );

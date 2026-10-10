@@ -75,6 +75,8 @@ final class Elementor {
 		// Elementor Pro has public REST routes that render one element of any page on request,
 		// skipping every check a page view makes.
 		add_filter( 'rest_request_before_callbacks', array( $this, 'guardRenderRoute' ), 10, 3 );
+		add_action( 'elementor/frontend/after_enqueue_scripts', array( $this, 'refreshToken' ) );
+		add_filter( 'favr_members_restricted_post', array( $this, 'restrictedPost' ) );
 		add_action( 'elementor/documents/register_controls', array( $this, 'documentControls' ) );
 		add_action( 'elementor/document/before_get_config', array( $this, 'configuring' ) );
 		add_filter( 'elementor/document/config', array( $this, 'documentConfig' ), 10, 2 );
@@ -173,7 +175,12 @@ final class Elementor {
 			return (bool) $should_render;
 		}
 		$mode = (string) $element->get_settings( self::CONTROL );
-		if ( '' === $mode || self::editing() ) {
+		if ( '' === $mode ) {
+			return true;
+		}
+		// Everything shows while a page is being edited, to the person who may edit that page:
+		// not the parts of someone else's page they have embedded in their own.
+		if ( self::editing() && current_user_can( 'edit_post', self::buildingId() ) ) {
 			return true;
 		}
 		return self::visible( $mode, is_user_logged_in(), Restrict::canView( self::buildingId() ) );
@@ -191,24 +198,40 @@ final class Elementor {
 	 * @return list<string>|null
 	 */
 	public static function pathModes( array $elements, string $id, ?callable $inner = null ): ?array {
+		return self::pathsTo( $elements, $id, $inner )[0] ?? null;
+	}
+
+	/**
+	 * The same for every element that carries the id, read as text. Page data that no editor
+	 * writes can hold the same id twice, a number where another element has the same digits as
+	 * text, or no id at all (found by naming none); Elementor picks one of them by rules of its
+	 * own, so all of them are looked at.
+	 *
+	 * @param array<int, mixed> $elements Elementor element data.
+	 * @param string            $id       Element id to find ('' finds elements without one).
+	 * @param callable|null     $inner    See pathModes().
+	 * @return list<list<string>>
+	 */
+	public static function pathsTo( array $elements, string $id, ?callable $inner = null ): array {
+		$paths = array();
 		foreach ( $elements as $element ) {
 			if ( ! is_array( $element ) ) {
 				continue;
 			}
 			$mode = (string) ( $element['settings'][ self::CONTROL ] ?? '' );
-			if ( (string) ( $element['id'] ?? '' ) === $id ) {
-				return array( $mode );
+			$own  = $element['id'] ?? '';
+			if ( ( is_scalar( $own ) ? (string) $own : '' ) === $id ) {
+				$paths[] = array( $mode );
 			}
 			$children = isset( $element['elements'] ) && is_array( $element['elements'] ) ? $element['elements'] : array();
 			if ( $inner ) {
 				$children = (array) $inner( $children, $element );
 			}
-			$below = self::pathModes( $children, $id, $inner );
-			if ( null !== $below ) {
-				return array_merge( array( $mode ), $below );
+			foreach ( self::pathsTo( $children, $id, $inner ) as $below ) {
+				$paths[] = array_merge( array( $mode ), $below );
 			}
 		}
-		return null;
+		return $paths;
 	}
 
 	/**
@@ -219,7 +242,8 @@ final class Elementor {
 	 * @return mixed
 	 */
 	public function gateBuilderData( $data, $post_id = 0 ) {
-		return ! self::editing() && Restrict::isGated( (int) $post_id ) ? array() : $data;
+		// No exception for the editor: whoever may edit the page is never kept out of it.
+		return Restrict::isGated( (int) $post_id ) ? array() : $data;
 	}
 
 	/**
@@ -302,29 +326,46 @@ final class Elementor {
 		);
 		// The children of an element, the way Elementor's own lookup reaches them.
 		$inner = static fn( array $children, array $element ): array => (array) apply_filters( 'elementor/utils/find_element_recursive/inner_elements', $children, $element ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.ValidHookName.UseUnderscores -- Elementor's own filter, asked the way Elementor asks it.
+		// A request that names no element finds, for Elementor, an element without an id.
+		$named = array_values( array_unique( array_merge( $asked['elements'], array( '' ) ) ) );
 		foreach ( $asked['posts'] as $post_id ) {
 			$post = get_post( $post_id );
 			if ( ! $post ) {
 				continue;
 			}
-			$refuse = Restrict::isGated( $post_id ) || ( ! is_post_publicly_viewable( $post ) && ! current_user_can( 'edit_post', $post_id ) );
-			if ( ! $refuse && $asked['elements'] && class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->documents ) ) {
-				$document = \Elementor\Plugin::$instance->documents->get( $post_id );
-				$data     = $document && method_exists( $document, 'get_elements_data' ) ? (array) $document->get_elements_data() : array();
-				foreach ( $asked['elements'] as $element ) {
-					foreach ( (array) self::pathModes( $data, $element, $inner ) as $mode ) {
+			if ( Restrict::isGated( $post_id ) ) {
+				return self::refusal( true );
+			}
+			if ( post_password_required( $post ) || ( ! is_post_publicly_viewable( $post ) && ! current_user_can( 'edit_post', $post_id ) ) ) {
+				return self::refusal( false );
+			}
+			if ( ! class_exists( '\Elementor\Plugin' ) || ! isset( \Elementor\Plugin::$instance->documents ) ) {
+				continue;
+			}
+			$document = \Elementor\Plugin::$instance->documents->get( $post_id );
+			$data     = $document && method_exists( $document, 'get_elements_data' ) ? (array) $document->get_elements_data() : array();
+			foreach ( $named as $element ) {
+				foreach ( self::pathsTo( $data, $element, $inner ) as $modes ) {
+					foreach ( $modes as $mode ) {
 						if ( ! self::visible( (string) $mode, is_user_logged_in(), Restrict::canView( $post_id ) ) ) {
-							$refuse = true;
-							break 2;
+							return self::refusal( true );
 						}
 					}
 				}
 			}
-			if ( $refuse ) {
-				return new \WP_Error( 'favr_members_only', __( 'This content is for members.', 'favr-members' ), array( 'status' => rest_authorization_required_code() ) );
-			}
 		}
 		return $response;
+	}
+
+	/**
+	 * The answer to a request the guard refuses.
+	 *
+	 * @param bool $members Whether it is refused because the content is for members.
+	 */
+	private static function refusal( bool $members ): \WP_Error {
+		return $members
+			? new \WP_Error( 'favr_members_only', __( 'This content is for members.', 'favr-members' ), array( 'status' => rest_authorization_required_code() ) )
+			: new \WP_Error( 'favr_members_unavailable', __( 'This page is not available.', 'favr-members' ), array( 'status' => rest_authorization_required_code() ) );
 	}
 
 	/**
@@ -359,10 +400,39 @@ final class Elementor {
 	 * @param string $content Builder output.
 	 */
 	public function gateBuilderContent( $content ): string {
-		if ( self::editing() ) {
-			return (string) $content;
-		}
 		return Restrict::isGated( self::buildingId() ) ? Restrict::gate( '' ) : (string) $content;
+	}
+
+	/**
+	 * The page a "members only" block or shortcode belongs to: while Elementor builds a page or
+	 * post, that one, even when it is being built inside another page (embedded by reference).
+	 * Otherwise an Author could read the members-only part of someone else's page by embedding
+	 * the page in a post of their own.
+	 *
+	 * @param mixed $post_id The current post.
+	 */
+	public function restrictedPost( $post_id ): int {
+		$building = self::buildingId();
+		return $building > 0 && in_array( get_post_type( $building ), array( 'page', 'post' ), true ) ? $building : (int) $post_id;
+	}
+
+	/**
+	 * Elementor Pro's filter and search widgets ask the site to render a list again, and send
+	 * only the login cookie. WordPress does not accept a cookie alone on such a request, so the
+	 * site answers as it would a visitor: a member gets refused on a members-only page and sees
+	 * "for members" cards elsewhere. A signed-in person's page therefore adds the token
+	 * WordPress does accept to those requests (same site only).
+	 */
+	public function refreshToken(): void {
+		if ( ! is_user_logged_in() || ! wp_script_is( 'elementor-frontend', 'registered' ) ) {
+			return;
+		}
+		$script = '(function(){var t=%s,f=window.fetch;if(!f||window.favrMembersRefresh){return;}window.favrMembersRefresh=1;'
+			. 'window.fetch=function(i,o){try{var u=new URL("string"===typeof i?i:(i&&i.url)||"",location.href);'
+			. 'if(u.origin===location.origin&&/\/elementor-pro\/v1\/(refresh-|posts-widget)/i.test(decodeURIComponent(u.pathname+u.search))){'
+			. 'o=o||{};var h=new Headers(o.headers||("string"===typeof i?undefined:i&&i.headers)||{});if(!h.has("X-WP-Nonce")){h.set("X-WP-Nonce",t);}o.headers=h;}'
+			. '}catch(e){}return f.call(this,i,o);};})();';
+		wp_add_inline_script( 'elementor-frontend', sprintf( $script, wp_json_encode( wp_create_nonce( 'wp_rest' ) ) ), 'before' );
 	}
 
 	/**

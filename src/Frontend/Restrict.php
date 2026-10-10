@@ -327,13 +327,26 @@ final class Restrict {
 	}
 
 	/**
+	 * The page a "members only" block or shortcode is part of. Usually the current post; a page
+	 * builder says otherwise when it is building one page inside another.
+	 */
+	private static function owner(): int {
+		/**
+		 * Filter the post a "members only" block or shortcode belongs to.
+		 *
+		 * @param int $post_id The current post.
+		 */
+		return (int) apply_filters( 'favr_members_restricted_post', (int) get_the_ID() );
+	}
+
+	/**
 	 * Block render.
 	 *
 	 * @param array<string, mixed> $attributes Attributes.
 	 * @param string               $content    Inner blocks.
 	 */
 	public function renderBlock( array $attributes, string $content ): string {
-		if ( self::canView( (int) get_the_ID() ) ) {
+		if ( self::canView( self::owner() ) ) {
 			return $content;
 		}
 		return self::gate( (string) ( $attributes['message'] ?? '' ) );
@@ -347,7 +360,7 @@ final class Restrict {
 	 */
 	public function shortcode( $atts, ?string $content = null ): string {
 		$atts = shortcode_atts( array( 'message' => '' ), is_array( $atts ) ? $atts : array() );
-		return self::canView( (int) get_the_ID() ) ? do_shortcode( (string) $content ) : self::gate( (string) $atts['message'] );
+		return self::canView( self::owner() ) ? do_shortcode( (string) $content ) : self::gate( (string) $atts['message'] );
 	}
 
 	/**
