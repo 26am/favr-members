@@ -55,7 +55,14 @@ final class Activation {
 		return array( "edit_{$p}", "edit_others_{$p}", "edit_private_{$p}", "edit_published_{$p}", "publish_{$p}", "read_private_{$p}", "delete_{$p}", "delete_others_{$p}", "delete_private_{$p}", "delete_published_{$p}", ID::CAP_SETTINGS );
 	}
 
-	/** Grant caps and (re)create roles. Idempotent. */
+	/**
+	 * Grant caps to administrators/editors and make sure the Member and Membership Manager roles
+	 * have their own. Idempotent; runs on activation and on every version upgrade.
+	 *
+	 * The two roles are never removed and re-created: that dropped every capability another
+	 * plugin or the site owner had added to them, on each update. A missing role is created; an
+	 * existing one is given what it lacks and keeps everything else.
+	 */
 	public static function installCaps(): void {
 		foreach ( array( 'administrator', 'editor' ) as $role_name ) {
 			$role = get_role( $role_name );
@@ -68,12 +75,10 @@ final class Activation {
 			}
 		}
 
-		remove_role( ID::ROLE_PERSON );
-		add_role( ID::ROLE_PERSON, __( 'Member', 'favr-members' ), array( 'read' => true ) );
+		self::installRole( ID::ROLE_PERSON, __( 'Member', 'favr-members' ), array( 'read' => true ) );
 
 		$caps = array_fill_keys( array_diff( self::caps(), array( ID::CAP_SETTINGS ) ), true );
-		remove_role( ID::ROLE_MANAGER );
-		add_role(
+		self::installRole(
 			ID::ROLE_MANAGER,
 			__( 'Membership Manager', 'favr-members' ),
 			$caps + array(
@@ -87,6 +92,26 @@ final class Activation {
 		if ( $directory_manager ) {
 			foreach ( array_keys( $caps ) as $cap ) {
 				$directory_manager->add_cap( $cap );
+			}
+		}
+	}
+
+	/**
+	 * Create a role, or give an existing one the capabilities it lacks. Nothing is ever taken away.
+	 *
+	 * @param string              $role Role key.
+	 * @param string              $name Display name, used when the role is created.
+	 * @param array<string, bool> $caps The role's own capabilities.
+	 */
+	private static function installRole( string $role, string $name, array $caps ): void {
+		$existing = get_role( $role );
+		if ( ! $existing ) {
+			add_role( $role, $name, $caps );
+			return;
+		}
+		foreach ( array_keys( $caps ) as $cap ) {
+			if ( ! $existing->has_cap( $cap ) ) {
+				$existing->add_cap( $cap );
 			}
 		}
 	}
