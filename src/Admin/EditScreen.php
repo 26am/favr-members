@@ -37,6 +37,20 @@ final class EditScreen {
 	 */
 	public const REMOVED_BOXES = array( 'postcustom', 'slugdiv' );
 
+	/** A save without a name: the new record was kept a draft / the saved record kept its name. */
+	public const NAME_HELD = 'held';
+	public const NAME_KEPT = 'kept';
+
+	/** The fields a member's name is made of. */
+	private const NAME_FIELDS = array( 'type', 'first_name', 'last_name', 'business_name' );
+
+	/**
+	 * What this request's save did about a missing name: '', NAME_HELD or NAME_KEPT.
+	 *
+	 * @var string
+	 */
+	private string $nameless = '';
+
 	/**
 	 * Field renderer.
 	 *
@@ -58,6 +72,42 @@ final class EditScreen {
 		add_action( 'save_post_' . ID::POST_TYPE, array( $this, 'save' ), 10, 2 );
 		add_filter( 'post_updated_messages', array( $this, 'messages' ) );
 		add_action( 'admin_notices', array( $this, 'notices' ) );
+		add_action( 'current_screen', array( $this, 'wordsForARecord' ) );
+	}
+
+	/**
+	 * On the member add and edit screens the Publish box speaks of saving a record.
+	 *
+	 * @param \WP_Screen|null $screen Screen.
+	 */
+	public function wordsForARecord( $screen ): void {
+		if ( $screen instanceof \WP_Screen && 'post' === $screen->base && ID::POST_TYPE === $screen->post_type ) {
+			add_filter( 'gettext', array( self::class, 'recordWords' ), 10, 3 );
+		}
+	}
+
+	/**
+	 * WordPress's own "Publish", "Published" and "Status:" as they read for a member record. It
+	 * is never public (it has no address and no page), so nothing is "published": the box saves
+	 * a record, which is a draft until it is saved for real.
+	 *
+	 * @param string $translation What WordPress would print.
+	 * @param string $text        The English original.
+	 * @param string $domain      Text domain; only WordPress's own words change.
+	 */
+	public static function recordWords( $translation, $text, $domain ): string {
+		if ( 'default' !== $domain ) {
+			return (string) $translation;
+		}
+		switch ( (string) $text ) {
+			case 'Publish':
+				return __( 'Save member', 'favr-members' );
+			case 'Published':
+				return __( 'Saved', 'favr-members' );
+			case 'Status:':
+				return __( 'Record:', 'favr-members' );
+		}
+		return (string) $translation;
 	}
 
 	/**
@@ -78,6 +128,12 @@ final class EditScreen {
 	public function metaBoxes( \WP_Post $post ): void {
 		foreach ( self::REMOVED_BOXES as $box ) {
 			remove_meta_box( $box, ID::POST_TYPE, 'normal' );
+		}
+		// The box that holds "Save member": "Save", not WordPress's "Publish".
+		global $wp_meta_boxes;
+		if ( isset( $wp_meta_boxes[ ID::POST_TYPE ]['side']['core']['submitdiv']['title'] ) ) {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- the only way to retitle a box WordPress has already added.
+			$wp_meta_boxes[ ID::POST_TYPE ]['side']['core']['submitdiv']['title'] = __( 'Save', 'favr-members' );
 		}
 		$titles = self::boxes();
 		add_meta_box( 'favr-member-level', $titles['favr-member-level'], array( $this, 'renderLevel' ), ID::POST_TYPE, 'side' );
@@ -234,14 +290,16 @@ final class EditScreen {
 					? sprintf( __( 'Last login %s ago', 'favr-members' ), human_time_diff( $last ) )
 					: ( $invited ? __( 'Invited, hasn’t logged in yet', 'favr-members' ) : __( 'Never logged in', 'favr-members' ) ) );
 				printf(
-					'<li><strong>%1$s</strong><br><a href="mailto:%2$s">%3$s</a><br><small>%4$s</small><br><button type="submit" name="favr_member_invite" value="%5$d" class="button-link">%6$s</button> · <label class="favr-logins__remove"><input type="checkbox" name="favr_member_remove_users[]" value="%5$d"> %7$s</label></li>',
+					// "Send login email" acts at once; "Remove access" is a checkbox on its own line that says when it acts.
+					'<li><strong>%1$s</strong><br><a href="mailto:%2$s">%3$s</a><br><small>%4$s</small><br><button type="submit" name="favr_member_invite" value="%5$d" class="button-link">%6$s</button><p class="favr-logins__revoke"><label><input type="checkbox" name="favr_member_remove_users[]" value="%5$d"> <span>%7$s <small>%8$s</small></span></label></p></li>',
 					esc_html( $user->display_name ),
 					esc_attr( $user->user_email ),
 					esc_html( $user->user_email ),
 					esc_html( $state ),
 					(int) $user->ID,
 					esc_html__( 'Send login email', 'favr-members' ),
-					esc_html__( 'Remove access', 'favr-members' )
+					esc_html__( 'Remove access', 'favr-members' ),
+					esc_html__( '(applies when you update)', 'favr-members' )
 				);
 			}
 			echo '</ul>';
@@ -319,7 +377,10 @@ final class EditScreen {
 	}
 
 	/**
-	 * Derive the post title from the name fields (there is no title box).
+	 * Derive the post title from the name fields (there is no title box). A member needs a name:
+	 * without one a new record is kept as a draft, and a record that is already saved keeps the
+	 * name it has (taking it back to a draft would end the member's access and hide a business's
+	 * directory listing over an emptied field).
 	 *
 	 * @param array<string, mixed> $data    Post data.
 	 * @param array<string, mixed> $postarr Raw post array.
@@ -330,17 +391,44 @@ final class EditScreen {
 			return $data;
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- verified(); sanitized below.
-		$input              = isset( $_POST[ self::INPUT ] ) && is_array( $_POST[ self::INPUT ] ) ? wp_unslash( $_POST[ self::INPUT ] ) : array();
-		$type               = ID::TYPE_BUSINESS === ( $input['type'] ?? '' ) ? ID::TYPE_BUSINESS : ID::TYPE_INDIVIDUAL;
-		$name               = Member::displayName(
+		$input = isset( $_POST[ self::INPUT ] ) && is_array( $_POST[ self::INPUT ] ) ? wp_unslash( $_POST[ self::INPUT ] ) : array();
+		$type  = ID::TYPE_BUSINESS === ( $input['type'] ?? '' ) ? ID::TYPE_BUSINESS : ID::TYPE_INDIVIDUAL;
+		$name  = Member::displayName(
 			$type,
 			sanitize_text_field( (string) ( $input['first_name'] ?? '' ) ),
 			sanitize_text_field( (string) ( $input['last_name'] ?? '' ) ),
 			sanitize_text_field( (string) ( $input['business_name'] ?? '' ) )
 		);
+		if ( '' === $name ) {
+			$stored = (int) ( $postarr['ID'] ?? 0 );
+			if ( $stored && 'publish' === get_post_status( $stored ) ) {
+				$this->nameless = self::NAME_KEPT;
+				return $data;
+			}
+			if ( self::mustStayDraft( $name, (string) ( $data['post_status'] ?? '' ) ) ) {
+				$data['post_status'] = 'draft';
+				$this->nameless      = self::NAME_HELD;
+			}
+		}
 		$data['post_title'] = '' !== $name ? $name : __( '(no name)', 'favr-members' );
 		$data['post_name']  = sanitize_title( $data['post_title'] );
 		return $data;
+	}
+
+	/**
+	 * A record without a name must not count as a member: not saved for real ("publish"),
+	 * scheduled, private or pending.
+	 *
+	 * @param string $name   The member's name.
+	 * @param string $status The status being saved.
+	 */
+	public static function mustStayDraft( string $name, string $status ): bool {
+		return '' === trim( $name ) && in_array( $status, array( 'publish', 'future', 'private', 'pending' ), true );
+	}
+
+	/** What this request's save did about a missing name: '', NAME_HELD or NAME_KEPT. */
+	public function nameProblem(): string {
+		return $this->nameless;
 	}
 
 	/**
@@ -361,6 +449,9 @@ final class EditScreen {
 		$before   = (string) get_post_meta( $post_id, ID::meta( 'status' ), true );
 
 		foreach ( Fields::set()->all() as $id => $field ) {
+			if ( self::NAME_KEPT === $this->nameless && in_array( $id, self::NAME_FIELDS, true ) ) {
+				continue; // The name was emptied on a saved member: it keeps the one it has.
+			}
 			$value = Sanitizer::sanitize( $field, $input[ $id ] ?? null );
 			if ( 'email' === $field['type'] && is_string( $input[ $id ] ?? null ) && '' !== trim( (string) $input[ $id ] ) && '' === $value ) {
 				$warnings[] = $field['label'];
@@ -370,6 +461,14 @@ final class EditScreen {
 			} else {
 				update_post_meta( $post_id, ID::meta( (string) $id ), $value );
 			}
+		}
+
+		if ( self::NAME_HELD === $this->nameless ) {
+			$warnings[] = __( 'Add a name to save this member.', 'favr-members' );
+			// Not "Member added.": nothing was added yet.
+			add_filter( 'redirect_post_location', static fn( $location ): string => (string) remove_query_arg( 'message', (string) $location ) );
+		} elseif ( self::NAME_KEPT === $this->nameless ) {
+			$warnings[] = __( 'A member needs a name, so the name was left as it was.', 'favr-members' );
 		}
 
 		if ( isset( $_POST['favr_member_level'] ) ) {

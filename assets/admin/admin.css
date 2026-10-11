@@ -67,6 +67,14 @@
 	color: #8c8f94;
 }
 
+/* The Save box (WordPress's Publish box) on a member. A record is a draft or it is saved: it is
+   never scheduled or "pending review", and either would quietly stop it counting as a member.
+   So the date row and the link that changes the status are not offered. */
+.post-type-favr_member #submitdiv .misc-pub-curtime,
+.post-type-favr_member #submitdiv .misc-pub-post-status .edit-post-status {
+	display: none;
+}
+
 /* Type-dependent boxes. */
 body.favr-type-individual .favr-only-business,
 body.favr-type-business .favr-only-individual {
@@ -83,8 +91,19 @@ body.favr-type-business .favr-only-individual {
 	line-height: 1.5;
 }
 
-.favr-logins__remove {
-	color: #b32d2e;
+/* "Remove access": a plain checkbox on its own line under "Send login email", with a quiet
+   note that it waits for Update. */
+.favr-logins .favr-logins__list li .favr-logins__revoke {
+	margin: 6px 0 0;
+}
+
+.favr-logins__list .favr-logins__revoke label {
+	color: var(--favr-ink, #1d2327);
+}
+
+.favr-logins__list .favr-logins__revoke small {
+	color: var(--favr-muted, #646970);
+	font-size: 12px;
 }
 
 .favr-logins__names {
@@ -110,6 +129,16 @@ body.favr-type-business .favr-only-individual {
 	height: 12px;
 	border-radius: 3px;
 	vertical-align: middle;
+}
+
+/* Contact in the list: the e-mail and the phone on a line each, after a small icon, as in the
+   Directory list. (Favr Sites sizes them for Editors.) */
+.column-favr_contact .dashicons {
+	width: 14px;
+	height: 14px;
+	color: #a7aaad;
+	font-size: 14px;
+	vertical-align: text-bottom;
 }
 
 /* The level chip in the list: the level's colour, then its name on the same line. (Favr Sites
