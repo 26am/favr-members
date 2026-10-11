@@ -27,6 +27,17 @@ final class EditScreen {
 	private const INPUT = 'favr_member';
 
 	/**
+	 * WordPress boxes this screen drops.
+	 *
+	 * `slugdiv` is one of them here, unlike on a Directory listing (where the permalink under
+	 * the title saves through the field inside that box). A member has no title field and no
+	 * address (the post type is not public), so there is no permalink to edit, and deriveTitle()
+	 * writes the slug from the member's name on every save. A Slug box on this screen would be a
+	 * field that never saves what is typed into it.
+	 */
+	public const REMOVED_BOXES = array( 'postcustom', 'slugdiv' );
+
+	/**
 	 * Field renderer.
 	 *
 	 * @var FieldRenderer
@@ -65,8 +76,9 @@ final class EditScreen {
 	 * @param \WP_Post $post Post.
 	 */
 	public function metaBoxes( \WP_Post $post ): void {
-		remove_meta_box( 'postcustom', ID::POST_TYPE, 'normal' );
-		remove_meta_box( 'slugdiv', ID::POST_TYPE, 'normal' );
+		foreach ( self::REMOVED_BOXES as $box ) {
+			remove_meta_box( $box, ID::POST_TYPE, 'normal' );
+		}
 		$titles = self::boxes();
 		add_meta_box( 'favr-member-level', $titles['favr-member-level'], array( $this, 'renderLevel' ), ID::POST_TYPE, 'side' );
 		add_meta_box( 'favr-member-logins', $titles['favr-member-logins'], array( $this, 'renderLogins' ), ID::POST_TYPE, 'side' );
