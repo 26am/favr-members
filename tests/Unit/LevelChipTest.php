@@ -63,4 +63,17 @@ final class LevelChipTest extends TestCase {
 			LevelChip::html( 'Friends & <b>family</b>', '#0f766e' )
 		);
 	}
+
+	/**
+	 * In the Members list the chip is a link that filters the list by that level, as the same
+	 * chip does in the Directory list.
+	 */
+	public function test_with_an_address_the_chip_is_a_link_to_the_list_filtered_by_that_level(): void {
+		\Brain\Monkey\Functions\when( 'esc_url' )->alias( static fn( $url ) => str_replace( '&', '&#038;', (string) $url ) );
+
+		$this->assertSame(
+			'<a class="favr-level-chip" href="edit.php?post_type=favr_member&#038;favr_level=8"><span class="favr-level__swatch" style="background:#12355b"></span>Fellow</a>',
+			LevelChip::html( 'Fellow', '#12355b', 'edit.php?post_type=favr_member&favr_level=8' )
+		);
+	}
 }
