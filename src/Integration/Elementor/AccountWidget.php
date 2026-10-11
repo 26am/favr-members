@@ -24,7 +24,7 @@ final class AccountWidget extends Widget {
 
 	/** Title. */
 	public function get_title(): string {
-		return __( 'Member Account', 'favr-members' );
+		return __( 'Member account', 'favr-members' );
 	}
 
 	/** Icon. */

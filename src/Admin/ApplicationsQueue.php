@@ -152,6 +152,6 @@ final class ApplicationsQueue {
 		}
 
 		/* translators: %s: member name. */
-		return sprintf( __( 'Declined %s’s application.', 'favr-members' ), $member->name() );
+		return sprintf( __( 'Rejected %s’s application.', 'favr-members' ), $member->name() );
 	}
 }

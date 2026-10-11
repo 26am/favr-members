@@ -220,6 +220,49 @@ final class AdminWordsTest extends TestCase {
 		}
 	}
 
+	/**
+	 * The widgets in the page builder's panel: sentence case like everything else an Editor
+	 * reads. Only the title moves; the name is what saved pages hold, so it must never change.
+	 * (The classes extend Elementor's, which is not loaded here, so the source is read.)
+	 *
+	 * @dataProvider widgets
+	 *
+	 * @param string $file  Class file.
+	 * @param string $name  The widget's internal name.
+	 * @param string $title What the panel shows.
+	 */
+	public function test_the_page_builder_widgets_are_sentence_case( string $file, string $name, string $title ): void {
+		$source = (string) file_get_contents( dirname( __DIR__, 2 ) . '/src/Integration/Elementor/' . $file );
+
+		$this->assertSame( 1, preg_match( '/function get_name\\(\\): string \\{\\s+return \'([^\']+)\';/', $source, $found_name ) );
+		$this->assertSame( 1, preg_match( '/function get_title\\(\\): string \\{\\s+return __\\( \'([^\']+)\', \'favr-members\' \\);/', $source, $found_title ) );
+		$this->assertSame( $name, $found_name[1] );
+		$this->assertSame( $title, $found_title[1] );
+		$this->assertSentenceCase( $found_title[1], $file );
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: string, 2: string}>
+	 */
+	public function widgets(): array {
+		return array(
+			'login'       => array( 'LoginWidget.php', 'favr-members-login', 'Member login' ),
+			'account'     => array( 'AccountWidget.php', 'favr-members-account', 'Member account' ),
+			'application' => array( 'ApplicationWidget.php', 'favr-members-register', 'Membership application' ),
+		);
+	}
+
+	/**
+	 * The Approvals button says "Reject", so the message after it says "Rejected", not a second
+	 * word for the same thing.
+	 */
+	public function test_rejecting_an_application_says_rejected(): void {
+		$source = (string) file_get_contents( dirname( __DIR__, 2 ) . '/src/Admin/ApplicationsQueue.php' );
+
+		$this->assertStringContainsString( "__( 'Rejected %s’s application.', 'favr-members' )", $source );
+		$this->assertStringNotContainsString( 'Declined', $source );
+	}
+
 	public function test_the_submenu_pages_are_sentence_case(): void {
 		$pages = array();
 		Functions\when( 'add_submenu_page' )->alias(

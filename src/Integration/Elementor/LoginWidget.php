@@ -24,7 +24,7 @@ final class LoginWidget extends Widget {
 
 	/** Title. */
 	public function get_title(): string {
-		return __( 'Member Login', 'favr-members' );
+		return __( 'Member login', 'favr-members' );
 	}
 
 	/** Icon. */

@@ -24,7 +24,7 @@ final class ApplicationWidget extends Widget {
 
 	/** Title. */
 	public function get_title(): string {
-		return __( 'Membership Application', 'favr-members' );
+		return __( 'Membership application', 'favr-members' );
 	}
 
 	/** Icon. */
