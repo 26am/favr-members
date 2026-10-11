@@ -25,6 +25,7 @@ Member records (individual or business), member logins and a member dashboard fo
 = 1.2.2 =
 * Admin wording in sentence case, like the rest of Favr: "All members", "Add member", "Edit member", "Search members"; "Membership levels" with "Add level" and "Edit level"; "Member settings"; "Import & export".
 * Moving a member to the Trash or back says "1 member moved to the Trash." instead of "1 post…".
+* The Level column of the Members list shows each level with its own color, like the Membership level box.
 * The Members list, Membership levels, Settings, Import & export and (with Favr Payments) Invoices screens no longer stop with the script error "sortable is not a function".
 
 = 1.2.1 =

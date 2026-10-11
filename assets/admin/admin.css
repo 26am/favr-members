@@ -112,11 +112,25 @@ body.favr-type-business .favr-only-individual {
 	vertical-align: middle;
 }
 
+/* The level chip in the list: the level's colour, then its name on the same line. (Favr Sites
+   draws it as a pill for Editors.) */
+.favr-level-chip {
+	white-space: nowrap;
+}
+
+.favr-level-chip .favr-level__swatch {
+	margin-right: 6px;
+}
+
 .post-type-favr_member .column-favr_type {
 	width: 130px;
 }
 
-.post-type-favr_member .column-favr_status,
-.post-type-favr_member .column-favr_level {
+.post-type-favr_member .column-favr_status {
 	width: 90px;
+}
+
+/* Room for the colour and a name as long as "Professional". */
+.post-type-favr_member .column-favr_level {
+	width: 110px;
 }

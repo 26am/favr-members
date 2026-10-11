@@ -75,7 +75,7 @@ final class ListScreen {
 				break;
 			case 'favr_level':
 				$level = $member->level();
-				echo esc_html( $level ? $level->name : '—' );
+				echo $level ? LevelChip::html( $level->name, (string) get_term_meta( $level->term_id, 'favr_level_color', true ) ) : '—'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in LevelChip.
 				break;
 			case 'favr_status':
 				printf( '<span class="favr-status favr-status--%1$s">%2$s</span>', esc_attr( $member->status() ), esc_html( ID::statuses()[ $member->status() ] ) );
