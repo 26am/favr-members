@@ -141,6 +141,14 @@ body.favr-type-business .favr-only-individual {
 	vertical-align: text-bottom;
 }
 
+/* Without the skin a long address stays on its icon's line and ends in an ellipsis (the link's
+   title holds all of it). The skin does this itself, on the link, to keep its focus ring whole. */
+body:not(.favr-skin) .column-favr_contact > div {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 /* The level chip in the list: the level's colour, then its name on the same line. (Favr Sites
    draws it as a pill for Editors.) */
 .favr-level-chip {

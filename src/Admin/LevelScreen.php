@@ -18,8 +18,12 @@ use FavrMembers\Schema\Identifiers as ID;
  */
 final class LevelScreen {
 
-	/** Hook (skipped when the Directory provides the fields). */
+	/**
+	 * Hook. The fields, the Order column and the colour are skipped when the Directory provides
+	 * them; the order of the list is not, since sorting what is already sorted changes nothing.
+	 */
 	public function hook(): void {
+		add_filter( 'get_terms', array( $this, 'order' ), 10, 3 );
 		add_action(
 			'init',
 			function (): void {
@@ -33,7 +37,6 @@ final class LevelScreen {
 				add_filter( 'manage_edit-' . ID::TAX_LEVEL . '_columns', array( $this, 'columns' ) );
 				add_filter( 'manage_' . ID::TAX_LEVEL . '_custom_column', array( $this, 'column' ), 10, 3 );
 				add_filter( 'term_name', array( $this, 'name' ), 10, 2 );
-				add_filter( 'get_terms', array( $this, 'order' ), 10, 3 );
 			},
 			20
 		);
