@@ -29,6 +29,11 @@ Member records (individual or business), member logins and a member dashboard fo
 * Membership levels use word for word the labels Favr Directory gives them, so the Membership levels screen reads the same whichever of the two plugins a site runs.
 * The Members list, Membership levels, Settings, Import & export and (with Favr Payments) Invoices screens no longer stop with the script error "sortable is not a function".
 * Fixed: updating the plugin no longer removes capabilities another plugin or the site owner added to the Membership Manager and Member roles. An update adds what a role is missing and keeps the rest.
+* The Members list's search also finds a member by company, e-mail, phone, member ID or city.
+* A member needs a name: a new one without a name stays a draft with a message. The box that saves a member says "Save member" and shows whether the record is saved or a draft.
+* The level in the Members list is a link that filters the list by that level; the Contact column matches the Directory's; Renewal reads "Jul 8, 2027".
+* Membership levels are listed in their own order with the color before the name (also on a site without Favr Directory).
+* Widget titles in sentence case ("Member login", "Member account", "Membership application"); "Rejected" after an application is rejected.
 
 = 1.2.1 =
 * Members-only pages and posts: hidden text could still reach non-members by side routes (a Latest Posts block showing full posts, a members-only Elementor page embedded in another page, Elementor Pro's load-more address, the excerpt in the page source and on Elementor Loop Grid cards, comment feeds, and search matching hidden words). All closed.
