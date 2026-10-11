@@ -85,12 +85,12 @@ final class Fields {
 					'width'      => 'half',
 					'conditions' => $individual,
 				),
+				// Full width: half a row cut a long address off on a small laptop.
 				array(
 					'id'    => 'email',
 					'label' => __( 'Email', 'favr-members' ),
 					'type'  => 'email',
 					'tab'   => 'details',
-					'width' => 'half',
 				),
 				array(
 					'id'    => 'phone',
