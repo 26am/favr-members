@@ -54,17 +54,19 @@ final class Registrar {
 	}
 
 	/**
-	 * The words for membership levels. Every label a screen prints is the one Favr Directory
-	 * registers for this shared taxonomy, so the screens read alike whichever plugin loads first.
-	 * All of them are spelled out: levels are hierarchical, and what is left out WordPress fills
-	 * in with its category wording ("Search Categories", "Parent Category", "Most Used").
+	 * The words for membership levels: label for label the ones Favr Directory registers for
+	 * this shared taxonomy (its Registrar::levelLabels()), so the screens read alike whichever
+	 * plugin registers it. All of them are spelled out: levels are hierarchical, and what is left
+	 * out WordPress fills in with its category wording ("Search Categories", "Parent Category",
+	 * "Most Used", "Category Link"). tests/Unit/AdminWordsTest.php holds the list; Favr
+	 * Directory's tests hold the same one.
 	 *
 	 * @return array<string, string>
 	 */
 	public static function levelLabels(): array {
 		return array(
 			'name'                  => __( 'Membership levels', 'favr-members' ),
-			'singular_name'         => __( 'Level', 'favr-members' ),
+			'singular_name'         => __( 'Membership level', 'favr-members' ),
 			'menu_name'             => __( 'Membership levels', 'favr-members' ),
 			'search_items'          => __( 'Search levels', 'favr-members' ),
 			'all_items'             => __( 'All levels', 'favr-members' ),
@@ -82,6 +84,8 @@ final class Registrar {
 			'items_list'            => __( 'Levels list', 'favr-members' ),
 			'most_used'             => __( 'Most used', 'favr-members' ),
 			'back_to_items'         => __( '← All levels', 'favr-members' ),
+			'item_link'             => __( 'Level link', 'favr-members' ),
+			'item_link_description' => __( 'A link to a level.', 'favr-members' ),
 		);
 	}
 
