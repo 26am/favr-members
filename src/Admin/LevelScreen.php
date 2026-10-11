@@ -36,7 +36,8 @@ final class LevelScreen {
 				add_action( 'edited_' . ID::TAX_LEVEL, array( $this, 'save' ) );
 				add_filter( 'manage_edit-' . ID::TAX_LEVEL . '_columns', array( $this, 'columns' ) );
 				add_filter( 'manage_' . ID::TAX_LEVEL . '_custom_column', array( $this, 'column' ), 10, 3 );
-				add_filter( 'term_name', array( $this, 'name' ), 10, 2 );
+				// After WordPress's own escaping of the name (priority 30), or the dot is printed as text.
+				add_filter( 'term_name', array( $this, 'name' ), 40, 2 );
 			},
 			20
 		);

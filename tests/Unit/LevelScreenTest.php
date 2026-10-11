@@ -100,4 +100,31 @@ final class LevelScreenTest extends TestCase {
 		$this->assertSame( 'Associate', LevelScreen::nameWithColour( 'Associate', '' ) );
 		$this->assertSame( 'Associate', LevelScreen::nameWithColour( 'Associate', 'red; x:y' ) );
 	}
+
+	/**
+	 * WordPress escapes a term's name on the `term_name` filter at priority 30. Hooked earlier,
+	 * the dot would be printed as the text "<span class=…" in the list.
+	 */
+	public function test_the_colour_dot_is_added_after_wordpress_has_escaped_the_name(): void {
+		\Brain\Monkey\Functions\when( 'add_action' )->alias(
+			static function ( $hook, $callback ): void {
+				if ( 'init' === $hook ) {
+					$callback();
+				}
+			}
+		);
+		$priority = null;
+		\Brain\Monkey\Functions\when( 'add_filter' )->alias(
+			static function ( $hook, $callback, $at = 10 ) use ( &$priority ): void {
+				if ( 'term_name' === $hook ) {
+					$priority = $at;
+				}
+			}
+		);
+
+		( new LevelScreen() )->hook();
+
+		$this->assertNotNull( $priority, 'The name filter is hooked.' );
+		$this->assertGreaterThan( 30, $priority );
+	}
 }
