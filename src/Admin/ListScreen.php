@@ -1,6 +1,6 @@
 <?php
 /**
- * The "All Members" list table.
+ * The "All members" list table.
  *
  * @package FavrMembers
  */
@@ -27,6 +27,7 @@ final class ListScreen {
 		add_action( 'restrict_manage_posts', array( $this, 'filters' ), 10, 2 );
 		add_action( 'pre_get_posts', array( $this, 'query' ) );
 		add_filter( 'post_row_actions', array( $this, 'rowActions' ), 10, 2 );
+		add_filter( 'bulk_post_updated_messages', array( $this, 'bulkMessages' ), 10, 2 );
 		add_action( 'admin_menu', array( $this, 'menuBadge' ), 99 );
 	}
 
@@ -265,6 +266,32 @@ final class ListScreen {
 			unset( $actions['inline hide-if-no-js'], $actions['view'] );
 		}
 		return $actions;
+	}
+
+	/**
+	 * Notices after trashing or restoring from the list: "1 member moved to the Trash." instead of
+	 * WordPress's "1 post…".
+	 *
+	 * @param array<string, array<string, string>> $messages Messages by post type.
+	 * @param array<string, int>                   $counts   Items affected, by action.
+	 * @return array<string, array<string, string>>
+	 */
+	public function bulkMessages( array $messages, array $counts ): array {
+		$count = static fn( string $key ): int => (int) ( $counts[ $key ] ?? 0 );
+
+		$messages[ ID::POST_TYPE ] = array(
+			/* translators: %s: number of members. */
+			'updated'   => _n( '%s member updated.', '%s members updated.', $count( 'updated' ), 'favr-members' ),
+			/* translators: %s: number of members. */
+			'locked'    => _n( '%s member not updated, somebody is editing it.', '%s members not updated, somebody is editing them.', $count( 'locked' ), 'favr-members' ),
+			/* translators: %s: number of members. */
+			'deleted'   => _n( '%s member permanently deleted.', '%s members permanently deleted.', $count( 'deleted' ), 'favr-members' ),
+			/* translators: %s: number of members. */
+			'trashed'   => _n( '%s member moved to the Trash.', '%s members moved to the Trash.', $count( 'trashed' ), 'favr-members' ),
+			/* translators: %s: number of members. */
+			'untrashed' => _n( '%s member restored from the Trash.', '%s members restored from the Trash.', $count( 'untrashed' ), 'favr-members' ),
+		);
+		return $messages;
 	}
 
 	/** Pending-members count bubble on the admin menu. */

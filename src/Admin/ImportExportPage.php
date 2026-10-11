@@ -1,6 +1,6 @@
 <?php
 /**
- * Members → Import / Export.
+ * Members → Import & export.
  *
  * @package FavrMembers
  */
@@ -28,7 +28,7 @@ final class ImportExportPage {
 
 	/** Menu. */
 	public function menu(): void {
-		add_submenu_page( 'edit.php?post_type=' . ID::POST_TYPE, __( 'Import & Export Members', 'favr-members' ), __( 'Import / Export', 'favr-members' ), ID::CAP_SETTINGS, self::SLUG, array( $this, 'render' ) );
+		add_submenu_page( 'edit.php?post_type=' . ID::POST_TYPE, __( 'Import & export members', 'favr-members' ), __( 'Import & export', 'favr-members' ), ID::CAP_SETTINGS, self::SLUG, array( $this, 'render' ) );
 	}
 
 	/** Download. */
@@ -73,7 +73,7 @@ final class ImportExportPage {
 		delete_transient( 'favr_members_import_' . get_current_user_id() );
 		?>
 		<div class="wrap favr-settings">
-			<h1><?php esc_html_e( 'Import & Export Members', 'favr-members' ); ?></h1>
+			<h1><?php esc_html_e( 'Import & export members', 'favr-members' ); ?></h1>
 			<?php if ( is_array( $report ) ) : ?>
 				<div class="notice <?php echo esc_attr( empty( $report['errors'] ) ? 'notice-success' : 'notice-warning' ); ?>">
 					<?php if ( isset( $report['created'] ) ) : ?>

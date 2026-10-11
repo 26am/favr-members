@@ -25,25 +25,72 @@ final class Registrar {
 		add_action( 'init', array( $this, 'registerMeta' ), 8 );
 	}
 
+	/**
+	 * The words for members, in sentence case ("All members / Add member / Edit member").
+	 *
+	 * @return array<string, string>
+	 */
+	public static function memberLabels(): array {
+		return array(
+			'name'                  => __( 'Members', 'favr-members' ),
+			'singular_name'         => __( 'Member', 'favr-members' ),
+			'menu_name'             => __( 'Members', 'favr-members' ),
+			'all_items'             => __( 'All members', 'favr-members' ),
+			'add_new'               => __( 'Add member', 'favr-members' ),
+			'add_new_item'          => __( 'Add member', 'favr-members' ),
+			'edit_item'             => __( 'Edit member', 'favr-members' ),
+			'new_item'              => __( 'New member', 'favr-members' ),
+			'view_item'             => __( 'View member', 'favr-members' ),
+			'view_items'            => __( 'View members', 'favr-members' ),
+			'search_items'          => __( 'Search members', 'favr-members' ),
+			'not_found'             => __( 'No members found.', 'favr-members' ),
+			'not_found_in_trash'    => __( 'No members found in Trash.', 'favr-members' ),
+			// Headings a screen reader announces on the list; WordPress would say "Posts list".
+			'filter_items_list'     => __( 'Filter members list', 'favr-members' ),
+			'items_list_navigation' => __( 'Members list navigation', 'favr-members' ),
+			'items_list'            => __( 'Members list', 'favr-members' ),
+			'item_updated'          => __( 'Member updated.', 'favr-members' ),
+		);
+	}
+
+	/**
+	 * The words for membership levels. Every label a screen prints is the one Favr Directory
+	 * registers for this shared taxonomy, so the screens read alike whichever plugin loads first.
+	 * All of them are spelled out: levels are hierarchical, and what is left out WordPress fills
+	 * in with its category wording ("Search Categories", "Parent Category", "Most Used").
+	 *
+	 * @return array<string, string>
+	 */
+	public static function levelLabels(): array {
+		return array(
+			'name'                  => __( 'Membership levels', 'favr-members' ),
+			'singular_name'         => __( 'Level', 'favr-members' ),
+			'menu_name'             => __( 'Membership levels', 'favr-members' ),
+			'search_items'          => __( 'Search levels', 'favr-members' ),
+			'all_items'             => __( 'All levels', 'favr-members' ),
+			'parent_item'           => __( 'Parent level', 'favr-members' ),
+			'parent_item_colon'     => __( 'Parent level:', 'favr-members' ),
+			'edit_item'             => __( 'Edit level', 'favr-members' ),
+			'view_item'             => __( 'View level', 'favr-members' ),
+			'update_item'           => __( 'Update level', 'favr-members' ),
+			'add_new_item'          => __( 'Add level', 'favr-members' ),
+			'new_item_name'         => __( 'New level name', 'favr-members' ),
+			'not_found'             => __( 'No levels found.', 'favr-members' ),
+			'no_terms'              => __( 'No levels', 'favr-members' ),
+			'filter_by_item'        => __( 'Filter by level', 'favr-members' ),
+			'items_list_navigation' => __( 'Levels list navigation', 'favr-members' ),
+			'items_list'            => __( 'Levels list', 'favr-members' ),
+			'most_used'             => __( 'Most used', 'favr-members' ),
+			'back_to_items'         => __( '← All levels', 'favr-members' ),
+		);
+	}
+
 	/** The member post type. */
 	public function registerPostType(): void {
 		register_post_type(
 			ID::POST_TYPE,
 			array(
-				'labels'              => array(
-					'name'               => __( 'Members', 'favr-members' ),
-					'singular_name'      => __( 'Member', 'favr-members' ),
-					'menu_name'          => __( 'Members', 'favr-members' ),
-					'all_items'          => __( 'All Members', 'favr-members' ),
-					'add_new'            => __( 'Add Member', 'favr-members' ),
-					'add_new_item'       => __( 'Add New Member', 'favr-members' ),
-					'edit_item'          => __( 'Edit Member', 'favr-members' ),
-					'new_item'           => __( 'New Member', 'favr-members' ),
-					'search_items'       => __( 'Search Members', 'favr-members' ),
-					'not_found'          => __( 'No members found.', 'favr-members' ),
-					'not_found_in_trash' => __( 'No members found in Trash.', 'favr-members' ),
-					'item_updated'       => __( 'Member updated.', 'favr-members' ),
-				),
+				'labels'              => self::memberLabels(),
 				'public'              => false,
 				'show_ui'             => true,
 				'show_in_menu'        => true,
@@ -76,17 +123,7 @@ final class Registrar {
 			ID::TAX_LEVEL,
 			array( ID::POST_TYPE ),
 			array(
-				'labels'             => array(
-					'name'          => __( 'Membership Levels', 'favr-members' ),
-					'singular_name' => __( 'Membership Level', 'favr-members' ),
-					'menu_name'     => __( 'Membership Levels', 'favr-members' ),
-					'all_items'     => __( 'All Levels', 'favr-members' ),
-					'edit_item'     => __( 'Edit Level', 'favr-members' ),
-					'update_item'   => __( 'Update Level', 'favr-members' ),
-					'add_new_item'  => __( 'Add New Level', 'favr-members' ),
-					'new_item_name' => __( 'New Level Name', 'favr-members' ),
-					'not_found'     => __( 'No levels found.', 'favr-members' ),
-				),
+				'labels'             => self::levelLabels(),
 				'hierarchical'       => true,
 				'public'             => false,
 				'publicly_queryable' => false,

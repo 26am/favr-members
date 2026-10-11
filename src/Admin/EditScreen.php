@@ -67,11 +67,25 @@ final class EditScreen {
 	public function metaBoxes( \WP_Post $post ): void {
 		remove_meta_box( 'postcustom', ID::POST_TYPE, 'normal' );
 		remove_meta_box( 'slugdiv', ID::POST_TYPE, 'normal' );
-		add_meta_box( 'favr-member-level', __( 'Membership level', 'favr-members' ), array( $this, 'renderLevel' ), ID::POST_TYPE, 'side' );
-		add_meta_box( 'favr-member-logins', __( 'Login access', 'favr-members' ), array( $this, 'renderLogins' ), ID::POST_TYPE, 'side' );
+		$titles = self::boxes();
+		add_meta_box( 'favr-member-level', $titles['favr-member-level'], array( $this, 'renderLevel' ), ID::POST_TYPE, 'side' );
+		add_meta_box( 'favr-member-logins', $titles['favr-member-logins'], array( $this, 'renderLogins' ), ID::POST_TYPE, 'side' );
 		if ( Directory::available() ) {
-			add_meta_box( 'favr-member-listing', __( 'Directory listing', 'favr-members' ), array( $this, 'renderListing' ), ID::POST_TYPE, 'side' );
+			add_meta_box( 'favr-member-listing', $titles['favr-member-listing'], array( $this, 'renderListing' ), ID::POST_TYPE, 'side' );
 		}
+	}
+
+	/**
+	 * The side boxes' titles, in sentence case like every other box an Editor sees.
+	 *
+	 * @return array<string, string> Box id => title.
+	 */
+	public static function boxes(): array {
+		return array(
+			'favr-member-level'   => __( 'Membership level', 'favr-members' ),
+			'favr-member-logins'  => __( 'Login access', 'favr-members' ),
+			'favr-member-listing' => __( 'Directory listing', 'favr-members' ),
+		);
 	}
 
 	/**

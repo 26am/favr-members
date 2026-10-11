@@ -14,7 +14,7 @@ use FavrMembers\Schema\Identifiers as ID;
 use FavrMembers\Support\Settings;
 
 /**
- * Pages, registration, directory behaviour, renewals and email.
+ * Pages, registration, directory behavior, renewals and email.
  */
 final class SettingsPage {
 
@@ -30,8 +30,8 @@ final class SettingsPage {
 
 	/** Menu. */
 	public function menu(): void {
-		// "Membership Levels" is added automatically by WordPress for the shared level taxonomy.
-		add_submenu_page( 'edit.php?post_type=' . ID::POST_TYPE, __( 'Member Settings', 'favr-members' ), __( 'Settings', 'favr-members' ), ID::CAP_SETTINGS, self::SLUG, array( $this, 'render' ) );
+		// "Membership levels" is added automatically by WordPress for the shared level taxonomy.
+		add_submenu_page( 'edit.php?post_type=' . ID::POST_TYPE, __( 'Member settings', 'favr-members' ), __( 'Settings', 'favr-members' ), ID::CAP_SETTINGS, self::SLUG, array( $this, 'render' ) );
 	}
 
 	/**
@@ -130,7 +130,7 @@ final class SettingsPage {
 		$opt = ID::OPTION_SETTINGS;
 		?>
 		<div class="wrap favr-settings">
-			<h1><?php esc_html_e( 'Member Settings', 'favr-members' ); ?></h1>
+			<h1><?php esc_html_e( 'Member settings', 'favr-members' ); ?></h1>
 			<form method="post" action="options.php" class="favr-settings__form">
 				<?php settings_fields( 'favr_members' ); ?>
 
