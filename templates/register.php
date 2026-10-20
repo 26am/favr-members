@@ -65,7 +65,8 @@ $favr_type = 'business' === $favr_old( 'type' ) ? 'business' : 'individual';
 		do_action( 'favr_members_register_fields', $favr_type );
 		?>
 
-		<p class="favr-m-hp" aria-hidden="true"><label>Website <input type="text" name="favr_website" tabindex="-1" autocomplete="off"></label></p>
+		<?php // Robots fill every field; password managers are told to skip this one (named "website" once, 1Password filled it). ?>
+		<p class="favr-m-hp" aria-hidden="true"><label><?php esc_html_e( 'Leave this empty', 'favr-members' ); ?> <input type="text" name="<?php echo esc_attr( ID::FIELD_TRAP ); ?>" tabindex="-1" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore data-protonpass-ignore data-form-type="other"></label></p>
 		<input type="hidden" name="favr_members_action" value="register">
 		<?php wp_nonce_field( ID::NONCE_FRONT . '_register', '_favr_members_nonce' ); ?>
 		<p class="favr-m-hint"><?php esc_html_e( 'We’ll email you a link to confirm your address and choose a password.', 'favr-members' ); ?></p>

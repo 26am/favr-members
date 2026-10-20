@@ -30,6 +30,7 @@ final class Identifiers {
 	public const CAP_SETTINGS    = 'manage_favr_members';
 	public const NONCE_META      = 'favr_members_meta';
 	public const NONCE_FRONT     = 'favr_members_front';
+	public const FIELD_TRAP      = 'favr_leave_blank'; // The join form's hidden robot trap. No word autofill knows (it was "favr_website": 1Password filled it).
 	public const CRON_LAPSE      = 'favr_members_daily';
 	public const PAGE_META_GATED = '_favr_members_only';
 	public const PAGE_META_COPY  = '_favr_members_copy_of'; // On a copy (an Elementor template saved from a page): the page it was saved from.

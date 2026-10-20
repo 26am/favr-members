@@ -207,6 +207,16 @@ final class Auth {
 	}
 
 	/**
+	 * Pure: did the join form's hidden field come back filled? People never see it; a robot fills
+	 * every field. Only this name counts.
+	 *
+	 * @param array<string, mixed> $post The posted fields.
+	 */
+	public static function trapped( array $post ): bool {
+		return is_string( $post[ ID::FIELD_TRAP ] ?? null ) && '' !== trim( $post[ ID::FIELD_TRAP ] );
+	}
+
+	/**
 	 * Pure password rule.
 	 *
 	 * @param string $pass1 Password.
@@ -238,8 +248,11 @@ final class Auth {
 			return;
 		}
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- verified in handle().
-		if ( ! empty( $_POST['favr_website'] ) ) { // Honeypot: bots fill every field.
-			$this->done( Settings::pageUrl( 'register_page' ), 'check_email' );
+		// A filled trap is said out loud: told "check your email", a person whose password manager
+		// filled it would wait for an application that was never saved.
+		if ( self::trapped( $_POST ) ) {
+			self::fail( 'register', __( 'Your application wasn’t sent. Please check the form and send it again.', 'favr-members' ) );
+			return;
 		}
 		$type     = ID::TYPE_BUSINESS === sanitize_key( wp_unslash( $_POST['type'] ?? '' ) ) ? ID::TYPE_BUSINESS : ID::TYPE_INDIVIDUAL;
 		$first    = sanitize_text_field( wp_unslash( $_POST['first_name'] ?? '' ) );

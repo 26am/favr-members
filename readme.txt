@@ -4,7 +4,7 @@ Tags: members, membership, chamber of commerce, association, member dashboard
 Requires at least: 6.7
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.2.2
+Stable tag: 1.2.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -21,6 +21,9 @@ Member records (individual or business), member logins and a member dashboard fo
 * Dues, invoices and renewals are added by the separate Favr Payments plugin; without it, membership status is managed by staff.
 
 == Changelog ==
+
+= 1.2.3 =
+* Fixed: an applicant whose password manager filled the join form's hidden robot field was told to check their email while nothing was saved. The field is no longer called "website" (1Password filled it from an identity), password managers are told to skip it, and if it still comes back filled the form says the application wasn't sent and keeps what was typed.
 
 = 1.2.2 =
 * Admin wording in sentence case, like the rest of Favr: "All members", "Add member", "Edit member", "Search members"; "Membership levels" with "Add level" and "Edit level"; "Member settings"; "Import & export".
